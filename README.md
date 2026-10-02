@@ -29,7 +29,7 @@ Every phase is reproducible from this repo on a laptop with Docker.
 
 ## Quickstart
 
-Requirements: Docker Desktop (4 GB+ memory allotted), Python 3.9+, about 15 GB free disk for the full dataset.
+Requirements: Docker (Docker Desktop, or [Colima](https://github.com/abiosoft/colima) on a Mac without admin rights) with 4 GB+ memory, Python 3.9+, about 15 GB free disk for the full dataset.
 
 ```bash
 make up                 # MySQL 8.4 in Docker; creates .env with a random root password

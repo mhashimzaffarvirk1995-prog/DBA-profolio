@@ -93,7 +93,7 @@ Each procedure follows the same pattern:
 - **Mix:** about 47% remittances, 39% deposits, 7% transfers and 6% withdrawals. A customer who doesn't have enough balance to send tops up first, which is why deposits run high. About 2% of remittances fail and are refunded by a later reversal. Some remittances near the end of the window are still pending, and about 9,000 are stuck pending for more than a day, so the stuck-payment alert has something to catch.
 - **Consistency:** The generator tracks every balance and checks before writing that no customer wallet went negative and every currency nets to zero. The database then checks the same invariants again after loading.
 
-Output is CSV for `LOAD DATA INFILE`. The two big tables are split into 1M-row files so each load statement is a bounded transaction. The loader disables the InnoDB redo log, FK checks, unique checks and binary logging for the initial load only, and explains why in [scripts/load_data.sh](../scripts/load_data.sh).
+Output is CSV for `LOAD DATA LOCAL INFILE`. The two big tables are split into 1M-row files so each load statement is a bounded transaction. The loader disables the InnoDB redo log, FK checks, unique checks and binary logging for the initial load only, and explains why in [scripts/load_data.sh](../scripts/load_data.sh).
 
 ## Server version
 
@@ -101,16 +101,17 @@ The schema targets **MySQL 8.4 LTS**. MySQL 8.0 reached end of life in April 202
 
 ## Results (measured 2026-10-02)
 
-Measured on MySQL 8.4.9, Apple M-series laptop with 8 GB RAM, `innodb_buffer_pool_size = 1G`, default config otherwise ([my.cnf](../docker/standalone/my.cnf)).
+Measured on MySQL 8.4.9, Apple M-series laptop with 8 GB RAM, `innodb_buffer_pool_size = 1G`, default config otherwise ([my.cnf](../docker/standalone/my.cnf)). Run natively and then again in Docker (`make up && make test && make setup && make reconcile`, Colima VM with 4 CPU / 4 GB) with the same results; timings below are native unless marked.
 
 | Step | Result |
 |---|---|
 | Generate dataset | 10,000,201 transactions, 22,754,123 ledger entries in 4.5 min |
-| Bulk load (`LOAD DATA`, redo log off) | 6 min; transactions 4.1 GB, ledger_entries 2.8 GB on disk |
+| Bulk load (`LOAD DATA LOCAL`, redo log off) | 6 min native, 8 min in Docker; transactions 4.1 GB, ledger_entries 2.8 GB on disk |
 | Procedure and trigger tests | 46 / 46 pass |
 | Reconciliation on full data | all 6 checks clean (2 min) |
 | Concurrency, ordered locking | 4,800 transfers over 8 wallets from 16 threads: **0 deadlocks**, ~4,000 calls/s, p95 9.7 ms, money conserved |
 | Concurrency, naive locking | same load: **318 deadlocks**, money still conserved (InnoDB rolled the victims back) |
+| Same tests in Docker | 46 / 46 pass; 0 vs 333 deadlocks; reconciliation clean |
 
 ### Workload baseline (the "before" for performance tuning)
 

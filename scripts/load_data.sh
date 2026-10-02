@@ -15,7 +15,10 @@
 #   * turns off FK and unique checks (the generator guarantees both)
 #   * skips the binary log: replicas in Phase 2 are seeded from a clone or
 #     backup, not by replaying 35M row events
-# CHECK constraints are still enforced, so bad data still fails the load.
+#   * enables local_infile, so the mysql client can stream the CSVs
+#     (LOAD DATA LOCAL INFILE); it is switched back off afterwards
+# With LOCAL, MySQL downgrades bad rows (CHECK violations, duplicates) to
+# warnings and skips them, so the load stops if any file produces a warning.
 set -euo pipefail
 
 DB="${1:-payflow}"
@@ -25,11 +28,15 @@ COMPOSE=(docker compose --env-file "$ROOT/.env" -f "$ROOT/docker/standalone/dock
 
 sql() {
     if [[ -n "${MYSQL_CLIENT:-}" ]]; then
-        $MYSQL_CLIENT --default-character-set=utf8mb4 "$@"
+        $MYSQL_CLIENT --default-character-set=utf8mb4 --local-infile=1 "$@"
     else
-        "${COMPOSE[@]}" exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot --default-character-set=utf8mb4 "$@"' mysql "$@"
+        "${COMPOSE[@]}" exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot --default-character-set=utf8mb4 --local-infile=1 "$@"' mysql "$@"
     fi
 }
+
+# Where the mysql client sees the CSVs: the bind mount inside the container,
+# or the repo directory when MYSQL_CLIENT runs on this machine.
+if [[ -n "${MYSQL_CLIENT:-}" ]]; then CLIENT_DIR="$DATA"; else CLIENT_DIR="/data/generated"; fi
 
 # Parent tables before children.
 TABLES=(currencies countries exchange_rates remittance_fees customers kyc_documents
@@ -38,13 +45,9 @@ TABLES=(currencies countries exchange_rates remittance_fees customers kyc_docume
 shopt -s nullglob
 [[ -f "$DATA/customers.csv" ]] || { echo "No generated data in $DATA — run 'make generate' first." >&2; exit 1; }
 
-# Where the server reads files from (/var/lib/mysql-files/ in the container).
-FILE_DIR="$(sql -N -e 'SELECT @@secure_file_priv')"
-[[ -n "$FILE_DIR" && "$FILE_DIR" != "NULL" ]] || { echo "secure_file_priv is not set on the server" >&2; exit 1; }
-
-echo "Disabling InnoDB redo log for the bulk load"
-echo "ALTER INSTANCE DISABLE INNODB REDO_LOG;" | sql
-trap 'echo "Re-enabling InnoDB redo log"; echo "ALTER INSTANCE ENABLE INNODB REDO_LOG;" | sql' EXIT
+echo "Disabling InnoDB redo log and enabling local_infile for the bulk load"
+echo "ALTER INSTANCE DISABLE INNODB REDO_LOG; SET GLOBAL local_infile = ON;" | sql
+trap 'echo "Re-enabling InnoDB redo log, disabling local_infile"; echo "ALTER INSTANCE ENABLE INNODB REDO_LOG; SET GLOBAL local_infile = OFF;" | sql' EXIT
 
 load_start=$(date +%s)
 for table in "${TABLES[@]}"; do
@@ -55,18 +58,24 @@ for table in "${TABLES[@]}"; do
     for file in "${files[@]}"; do
         columns="$(head -1 "$file")"
         t0=$(date +%s)
-        sql "$DB" <<SQL
+        warnings="$(sql -N "$DB" <<SQL
 SET SESSION foreign_key_checks = 0;
 SET SESSION unique_checks = 0;
 SET SESSION sql_log_bin = 0;
-LOAD DATA INFILE '${FILE_DIR%/}/$(basename "$file")'
+LOAD DATA LOCAL INFILE '$CLIENT_DIR/$(basename "$file")'
     INTO TABLE $table
     CHARACTER SET utf8mb4
     FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
     LINES TERMINATED BY '\n'
     IGNORE 1 LINES
     ($columns);
+SELECT @@warning_count;
 SQL
+)"
+        if [[ "$warnings" != "0" ]]; then
+            echo "  $table: $(basename "$file") produced $warnings warning(s); rows were rejected. Stopping." >&2
+            exit 1
+        fi
         printf "  %-18s %-28s %4ss\n" "$table" "$(basename "$file")" "$(( $(date +%s) - t0 ))"
     done
 done

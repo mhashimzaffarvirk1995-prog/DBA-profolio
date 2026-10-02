@@ -15,7 +15,10 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
-      - ../../data/generated:/var/lib/mysql-files:ro   # LOAD DATA INFILE reads from here
+      # CSVs for the bulk load, read by the client (LOAD DATA LOCAL). Not mounted
+      # at secure_file_priv: the image's entrypoint chowns that directory and
+      # fails on a read-only mount.
+      - ../../data/generated:/data/generated:ro
     cap_add:
       - SYS_NICE                       # silences "mbind: Operation not permitted"
     healthcheck:
