@@ -1,0 +1,2 @@
+# scripts/generate_data.py uses only the standard library.
+mysql-connector-python>=9.0    # scripts/concurrency_test.py

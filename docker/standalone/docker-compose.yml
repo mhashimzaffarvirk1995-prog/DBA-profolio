@@ -1,0 +1,28 @@
+# Phase 1: a single MySQL 8.4 LTS server for schema work and the bulk load.
+# Phase 2 replaces this with a primary + two replicas, then an InnoDB Cluster.
+#
+# Run from the repo root via the Makefile (`make up`), which passes --env-file .env.
+name: payflow
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: payflow-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:3306:3306"          # local only
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+      - ../../data/generated:/var/lib/mysql-files:ro   # LOAD DATA INFILE reads from here
+    cap_add:
+      - SYS_NICE                       # silences "mbind: Operation not permitted"
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+volumes:
+  mysql-data:
