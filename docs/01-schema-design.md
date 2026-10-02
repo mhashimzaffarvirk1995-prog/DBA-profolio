@@ -98,3 +98,31 @@ Output is CSV for `LOAD DATA INFILE`. The two big tables are split into 1M-row f
 ## Server version
 
 The schema targets **MySQL 8.4 LTS**. MySQL 8.0 reached end of life in April 2026, so a new production system would start on 8.4. Everything here also runs on 8.0.30+ (`innodb_redo_log_capacity` and `FOR UPDATE OF` were added during the 8.0 series).
+
+## Results (measured 2026-10-02)
+
+Measured on MySQL 8.4.9, Apple M-series laptop with 8 GB RAM, `innodb_buffer_pool_size = 1G`, default config otherwise ([my.cnf](../docker/standalone/my.cnf)).
+
+| Step | Result |
+|---|---|
+| Generate dataset | 10,000,201 transactions, 22,754,123 ledger entries in 4.5 min |
+| Bulk load (`LOAD DATA`, redo log off) | 6 min; transactions 4.1 GB, ledger_entries 2.8 GB on disk |
+| Procedure and trigger tests | 46 / 46 pass |
+| Reconciliation on full data | all 6 checks clean (2 min) |
+| Concurrency, ordered locking | 4,800 transfers over 8 wallets from 16 threads: **0 deadlocks**, ~4,000 calls/s, p95 9.7 ms, money conserved |
+| Concurrency, naive locking | same load: **318 deadlocks**, money still conserved (InnoDB rolled the victims back) |
+
+### Workload baseline (the "before" for performance tuning)
+
+| Query | Time | Rows |
+|---|---|---|
+| Q1 monthly statement, one wallet | 0.11 s | 59 |
+| Q2 recent activity for a customer | **17.0 s** | 20 |
+| Q3 daily corridor volume, 30 days | 6.4 s | 868 |
+| Q4 AML: >10,000 sent in 30 days | 6.4 s | 2,550 |
+| Q5 stuck remittances >24 h | 5.8 s | 9,258 |
+| Q6 expired KYC, sent in last 30 days | 6.1 s | 66,552 |
+| Q7 monthly fee revenue | **18.4 s** | 168 |
+| Q8 look-up by txn_ref (indexed control) | 0.00 s | 1 |
+
+Q3 to Q7 scan the full 10M-row `transactions` or 22M-row `ledger_entries` table because no index covers their filters. Q2 also loses the index because of an `OR` across two wallet columns.
