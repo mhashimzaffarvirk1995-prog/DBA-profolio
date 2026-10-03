@@ -1,90 +1,129 @@
-# PayFlow — operating a remittance platform's MySQL database
+# PayFlow: a production-style MySQL platform for a remittance company
 
-PayFlow is a fictional money-transfer company, in the style of a UK/Gulf-to-Pakistan remittance provider. This repository is its database layer, built and run the way a production DBA team would: schema and transactional integrity, high availability, backup and point-in-time recovery, performance tuning, monitoring, security and compliance evidence, migration, and cloud deployment.
+![MySQL 8.4 LTS](https://img.shields.io/badge/MySQL-8.4_LTS-4479A1?logo=mysql&logoColor=white)
+![InnoDB Cluster](https://img.shields.io/badge/HA-InnoDB_Cluster-00758F)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
+![Phases](https://img.shields.io/badge/phases_done-2_of_8-brightgreen)
 
-Every phase is reproducible from this repo on a laptop with Docker.
+PayFlow is a fictional money-transfer company that sends money from the UK, the Gulf, North America and Europe to Pakistan, India, Bangladesh and the Philippines. This repository is its **database layer, designed and operated the way a production DBA team would run it**: a schema that refuses bad money data, high availability with measured failover, and, in the coming phases, backup and recovery, tuning, monitoring, security and compliance evidence, migration and cloud.
 
-## Status
+Everything is reproducible on a laptop with `make`, and every number below was measured, with raw logs in [docs/evidence/](docs/evidence/).
 
-| Phase | What it covers | Status |
-|---|---|---|
-| 1. [Schema design](docs/01-schema-design.md) | Normalised MySQL 8.4 schema, double-entry ledger, stored procedures with deadlock-free locking, audit triggers, 10M-transaction dataset | **Done** |
-| 2. [Replication and HA](docs/02-replication-ha.md) | Primary + 2 replicas (GTID, clone-seeded) with scripted manual failover; InnoDB Cluster + MySQL Router with measured automatic failover | **Done** |
-| 3. Backup and DR | XtraBackup nightly full, MySQL Shell dumps, binlog archiving, PITR drill with measured RPO/RTO | Planned |
-| 4. Performance tuning | Slow log + pt-query-digest, sysbench load, the five worst queries fixed, before/after numbers | Planned |
-| 5. Monitoring | Prometheus, mysqld_exporter, Grafana dashboards, alerts on replication lag and failed backups | Planned |
-| 6. Security and compliance | Least-privilege roles, TLS, password policy, audit log, encryption at rest, monthly privilege-review report | Planned |
-| 7. Migration | Legacy PostgreSQL → MySQL with row-count and checksum validation | Planned |
-| 8. Cloud | Terraform: RDS MySQL + read replica, automated backups, CloudWatch alarms, snapshot restore | Planned |
-| Ongoing | Health-check, backup-verification and provisioning scripts; runbooks; incident RCA | Planned |
+## Key results
 
-## Phase 2 at a glance
+| Area | Result |
+|---|---|
+| **Data integrity** | 10,000,201 transactions and 22.7M double-entry ledger lines; all 6 reconciliation checks clean (every currency nets to zero, every wallet matches its ledger) |
+| **Concurrency** | 16 threads hammering 8 wallets: **0 deadlocks** with ordered row locking, versus 318 with a naive version under the same load; no money created or lost |
+| **Automatic failover** | Primary killed (`SIGKILL`) under live writes: InnoDB Cluster elected a new primary on its own, with a **21–22 s** write outage at default settings (**6.5 s** tuned) |
+| **Zero data loss** | **RPO = 0**: 158 of 158 and 152 of 152 acknowledged writes present after failover |
+| **Replication** | Replicas seeded by Clone in 6 s, **0 s lag** at ~690 writes/s, table checksums identical to the primary |
+| **Tests** | 46 SQL assertions on procedures and triggers, passing natively and in Docker |
+| **Reproducibility** | From empty volumes: replication lab in 38 s, 3-node cluster in 48 s, 10M-row load in 6–8 min |
 
-- **Classic replication:** replicas are seeded with the Clone plugin (6 s) and use GTID auto-positioning, `super_read_only` and TLS. Lag stayed at 0 s under ~690 writes/s, and `CHECKSUM TABLE` matched exactly. A scripted manual failover checks for errant GTIDs before attaching anything.
-- **InnoDB Cluster:** three Group Replication nodes built with MySQL Shell's AdminAPI, with MySQL Router in front.
-- **Failover, measured:** a write probe ran through Router while the primary was `SIGKILL`ed. The cluster elected a new primary automatically, the write outage was **21–22 s at default settings (two runs) (6.5 s with `expelTimeout=0`)**, and **RPO was 0**: every acknowledged write was present afterwards. The killed node rejoined by itself in about 20 s. Raw logs are in [docs/evidence/](docs/evidence/).
+## Architecture
 
-## Phase 1 at a glance
-
-- **10 tables in 3NF** covering customers, KYC documents, wallets, beneficiaries, FX rates, fee bands, transactions, a double-entry ledger and an audit log, with foreign keys and CHECK constraints that reject inconsistent data.
-- **Double-entry ledger:** each currency nets to zero across all wallets, which gives a one-query integrity check.
-- **Stored procedures** for deposit, transfer, remittance send and completion/refund. Each owns its transaction, is idempotent on a client key, and locks wallets in a global order so concurrent transfers can't deadlock. [A concurrency test](scripts/concurrency_test.py) proves it, and shows deadlocks with a naive version.
-- **Triggers** write JSON before/after images to an append-only audit log, mask national IDs, and make transactions and ledger lines immutable.
-- **A 10-million-transaction dataset** simulated in time order, with growth, salary-week and Eid peaks, failures and refunds. Every wallet reconciles to its ledger.
-- **A tested API:** `make test` runs 46 assertions against the procedures and triggers.
-
-## Quickstart
-
-Requirements: Docker (Docker Desktop, or [Colima](https://github.com/abiosoft/colima) on a Mac without admin rights) with 4 GB+ memory, Python 3.9+, about 15 GB free disk for the full dataset.
-
-```bash
-make up                 # MySQL 8.4 in Docker; creates .env with a random root password
-make test               # build payflow_test and run the procedure/trigger tests
-
-make generate           # ~10M transactions -> data/generated/*.csv (about 4–5 min)
-make setup              # create schema, bulk-load, apply triggers
-make reconcile          # ledger invariants: every check should return nothing
-make workload           # time the reporting queries the tuning phase will fix
-
-pip install -r requirements.txt
-make concurrency        # 16 threads of transfers, zero deadlocks expected
+```mermaid
+flowchart LR
+  APP([Application]) -- ":6446 writes" --> RT[MySQL Router]
+  APP -- ":6447 reads" --> RT
+  RT --> N1[(node1<br/>PRIMARY)]
+  RT -.-> N2[(node2<br/>secondary)]
+  RT -.-> N3[(node3<br/>secondary)]
+  N1 <-- "Group Replication:<br/>a majority certifies every commit" --> N2
+  N2 <--> N3
+  N1 <--> N3
 ```
 
-For quick iteration, run `make generate-small` (200k transactions, a few seconds) and `make setup DATA_DIR=data/generated-small`.
+Each node holds the same schema: customers, KYC documents, wallets, beneficiaries, FX rates and fees; transactions with a double-entry ledger; and an append-only audit log. Money moves only through stored procedures.
 
-Phase 2 labs (each uses the small dataset; run one at a time):
+## Roadmap
+
+| # | Phase | What it shows | Status |
+|---|---|---|---|
+| 1 | [Schema design](docs/01-schema-design.md) | 3NF schema, double-entry ledger, deadlock-free stored procedures, audit triggers, 10M-row realistic dataset | ✅ Done |
+| 2 | [Replication and HA](docs/02-replication-ha.md) | GTID replication with scripted manual failover; InnoDB Cluster + Router with measured automatic failover | ✅ Done |
+| 3 | Backup and disaster recovery | XtraBackup, MySQL Shell dumps, binlog archiving, point-in-time recovery drill with measured RTO/RPO | 🔜 Next |
+| 4 | Performance tuning | Slow log, pt-query-digest, sysbench; fix the worst queries (baseline: up to 18 s) with before/after numbers | Planned |
+| 5 | Monitoring | Prometheus, mysqld_exporter, Grafana; alerts on replication lag and failed backups | Planned |
+| 6 | Security and compliance | Least-privilege roles, TLS, audit log, encryption at rest, monthly access-review report | Planned |
+| 7 | Migration | Legacy PostgreSQL → MySQL, validated by row counts and checksums | Planned |
+| 8 | Cloud | Terraform: Amazon RDS for MySQL with read replica, backups, CloudWatch alarms | Planned |
+
+## What's inside
+
+### Phase 1: a schema that protects money
+
+- **Double-entry ledger.** Every movement posts equal debits and credits, so `SUM(balance)` per currency is always zero. One query proves the books balance.
+- **Stored procedures** for deposit, transfer, cross-border send and refund. Each runs as a single transaction and rolls back fully on any error. Each is **idempotent**: a retried request never charges twice. Each **locks wallets in a fixed order**, so opposite transfers can't deadlock.
+- **Constraints that do real work.** CHECK constraints stop customer wallets going negative, require every failed transaction to state a reason, and give each transaction type exactly the fields it needs.
+- **Audit and immutability.** Triggers record before/after JSON for every sensitive change, mask national IDs, and block edits or deletes on transactions and ledger lines. Corrections are posted as reversals, as in real accounting.
+- **A dataset that behaves like a real business.** Two years and 10M transactions, with salary-week and pre-Eid peaks, a growing customer base, failed payouts and refunds, all simulated in time order so every balance reconciles.
+
+### Phase 2: staying up when a server dies
+
+- **Classic replication:** Clone-seeded replicas, GTID auto-positioning, TLS, `super_read_only`, and a [promotion script](docker/replication/promote.sh) that refuses unsafe failovers (replicas that are behind, errant GTIDs).
+- **InnoDB Cluster:** built with MySQL Shell's AdminAPI and fronted by MySQL Router, plus a [failover demo](docker/cluster/failover-demo.sh) that kills the primary under write load and reports the outage, the RPO and the rejoin time.
+- **A tuning decision backed by data:** the [design doc](docs/02-replication-ha.md#failover-results) traces the outage second by second, shows that `expelTimeout=0` cuts it from 21 s to 6.5 s, and explains why a payments system should still keep the safer default.
+
+## Skills demonstrated
+
+| DBA skill | Where |
+|---|---|
+| Database design, normalisation, constraints | [schema/01_tables.sql](schema/01_tables.sql) |
+| Transactions, isolation, row locking, deadlock avoidance | [schema/02_procedures.sql](schema/02_procedures.sql), [scripts/concurrency_test.py](scripts/concurrency_test.py) |
+| Triggers, auditing, data immutability | [schema/03_triggers.sql](schema/03_triggers.sql) |
+| Bulk loading and large datasets | [scripts/generate_data.py](scripts/generate_data.py), [scripts/load_data.sh](scripts/load_data.sh) |
+| GTID replication, Clone plugin, manual failover | [docker/replication/](docker/replication/) |
+| InnoDB Cluster, Group Replication, MySQL Router, MySQL Shell | [docker/cluster/](docker/cluster/) |
+| Testing, reconciliation, evidence-based reporting | [schema/tests/](schema/tests/), [schema/queries/](schema/queries/), [docs/](docs/) |
+| Linux, Bash, Docker, automation with `make` | [Makefile](Makefile), [scripts/lib/common.sh](scripts/lib/common.sh) |
+
+## Run it yourself
+
+**You need:** Docker with 4 GB+ memory (Docker Desktop, or [Colima](https://github.com/abiosoft/colima) on a Mac without admin rights), Python 3.9+, and about 15 GB of free disk for the full dataset.
+
+**Quick look (about 2 minutes):** start MySQL and run the tests.
 
 ```bash
-make down                                   # free the standalone server's memory
-make repl-up repl-setup repl-status         # classic replication
-make repl-promote TARGET=replica1           # manual failover
+make up                 # MySQL 8.4 in Docker; creates .env with random passwords
+make test               # 46 procedure and trigger tests
+```
+
+**Full dataset (about 15 minutes):** 10M transactions, then the integrity checks and the slow-query baseline.
+
+```bash
+make generate           # ~10M transactions -> data/generated/ (4–5 min)
+make setup              # schema + bulk load + triggers
+make reconcile          # every check should come back empty
+make workload           # time the reporting queries Phase 4 will optimise
+pip install -r requirements.txt && make concurrency
+```
+
+**High availability labs:** use the 200k-row dataset and run one lab at a time.
+
+```bash
+make down                                         # free the single server's memory
+make repl-up repl-setup repl-status               # primary + 2 replicas
+make repl-promote TARGET=replica1                 # manual failover
 make repl-down
-make cluster-up cluster-setup               # InnoDB Cluster + Router
-make failover-demo                          # kill the primary under load and measure
+
+make cluster-up cluster-setup                     # InnoDB Cluster + Router
+make failover-demo                                # kill the primary under load and measure
 make cluster-down
 ```
 
-`make help` lists every target.
+`make help` lists every command.
 
-## Layout
+## Repository layout
 
 ```
-schema/
-  01_tables.sql          tables, keys, constraints
-  02_procedures.sql      money-movement API
-  03_triggers.sql        audit trail and immutability (applied after bulk load)
-  tests/                 SQL assertions run by `make test`
-  queries/               reconciliation checks, reporting workload
-docker/standalone/       Phase 1 single-server Compose file and my.cnf
-docker/replication/      primary + 2 replicas: setup, status/checksums, promote (manual failover)
-docker/cluster/          InnoDB Cluster: AdminAPI setup, Router, failover demo and write probe
-scripts/
-  generate_data.py       dataset simulator (stdlib only)
-  load_data.sh           LOAD DATA INFILE bulk loader
-  concurrency_test.py    locking / deadlock demonstration
-  ensure_env.sh          creates .env / adds missing random passwords
-  lib/common.sh          shared helpers for the docker/* scripts
-docs/                    design notes per phase; runbooks and RCAs to come
+schema/                 tables, procedures, triggers, SQL tests, reconciliation and workload queries
+docker/standalone/      Phase 1: single MySQL server
+docker/replication/     Phase 2a: primary + 2 replicas (setup, status/checksums, promote)
+docker/cluster/         Phase 2b: InnoDB Cluster, Router, failover demo
+scripts/                data generator, bulk loader, concurrency test, shared helpers
+docs/                   design notes and results per phase
+docs/evidence/          raw logs behind the numbers above
 ```
-
-Later phases add `backup/`, `monitoring/`, `security/`, `migration/` and `terraform/`.
