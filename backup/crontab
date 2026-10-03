@@ -1,0 +1,5 @@
+# PayFlow backup schedule (UTC). Installed by entrypoint.sh in the ops container.
+# m  h  dom mon dow  command
+  0  1  *   *   *    /ops/full-backup.sh    >> /backups/cron.log 2>&1
+ 30  2  *   *   *    /ops/logical-backup.sh >> /backups/cron.log 2>&1
+  0  4  *   *   *    /ops/verify-backup.sh  >> /backups/cron.log 2>&1

@@ -16,7 +16,8 @@ MYSQL := $(COMPOSE) exec -T mysql sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" exec 
 .PHONY: help env up down destroy shell generate generate-small schema load triggers setup \
         drop-db test concurrency reconcile workload \
         repl-up repl-setup repl-status repl-promote repl-down repl-destroy \
-        cluster-up cluster-setup cluster-status failover-demo cluster-down cluster-destroy
+        cluster-up cluster-setup cluster-status failover-demo cluster-down cluster-destroy \
+        network ops-up ops-setup backup-full backup-logical backup-verify backup-status pitr-drill
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_.-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -28,15 +29,18 @@ env:  ## Create .env, or add missing keys, with random passwords
 
 # --- container -----------------------------------------------------------------
 
-up: env  ## Start MySQL and wait until it is healthy
+network:  ## Create the Docker network shared by the stacks
+	@docker network inspect payflow-shared >/dev/null 2>&1 || docker network create payflow-shared >/dev/null
+
+up: env network  ## Start MySQL and wait until it is healthy
 	@mkdir -p data/generated
-	$(COMPOSE) up -d --wait
+	$(COMPOSE) up -d --wait mysql
 
-down:  ## Stop MySQL (data volume kept)
-	$(COMPOSE) down
+down:  ## Stop MySQL and the ops services (data volume kept)
+	$(COMPOSE) --profile ops down
 
-destroy:  ## Stop MySQL and DELETE its data volume
-	$(COMPOSE) down -v
+destroy:  ## Stop MySQL and DELETE its data and backup volumes
+	$(COMPOSE) --profile ops --profile recovery down -v
 
 shell:  ## Interactive mysql prompt on $(DB)
 	$(COMPOSE) exec mysql sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" exec mysql -uroot $(DB)'
@@ -131,3 +135,28 @@ cluster-down:  ## Stop the cluster (volumes kept)
 
 cluster-destroy:  ## Stop the cluster and DELETE its volumes
 	$(CLUSTER) down -v
+
+# --- Phase 3: backup and disaster recovery (on the standalone server) ------------
+
+ops-setup:  ## Create the backup account and ops.backup_history on $(DB)'s server
+	@sed "s|__BACKUP_PASSWORD__|$$(grep '^BACKUP_PASSWORD=' .env | cut -d= -f2)|" backup/setup.sql | $(MYSQL)
+	@echo "backup account and ops.backup_history ready"
+
+ops-up: env network  ## Start the ops container (cron backups) and binlog archiver
+	$(COMPOSE) --profile ops up -d --build ops binlog-archiver
+
+backup-full:  ## Run the nightly XtraBackup job now
+	$(COMPOSE) exec -T ops /ops/full-backup.sh
+
+backup-logical:  ## Run the nightly MySQL Shell dump job now
+	$(COMPOSE) exec -T ops /ops/logical-backup.sh
+
+backup-verify:  ## Restore the latest full backup to scratch and check it
+	$(COMPOSE) exec -T ops /ops/verify-backup.sh
+
+backup-status:  ## Backup history (evidence trail) and archived binlogs
+	@echo "SELECT run_id, job, status, started_at, duration_s AS secs, ROUND(bytes/1048576) AS mb, location FROM ops.backup_history ORDER BY run_id DESC LIMIT 15" | $(MYSQL) --table
+	@$(COMPOSE) exec -T ops sh -c 'echo "archived binlogs:"; ls -l /backups/binlogs | tail -n +2 | awk "{print \"  \" \$$9, \$$5}"'
+
+pitr-drill:  ## DR drill: drop a table, restore it to the moment before, measure RTO/RPO
+	backup/pitr-drill.sh

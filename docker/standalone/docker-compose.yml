@@ -1,13 +1,28 @@
-# Phase 1: a single MySQL 8.4 LTS server for schema work and the bulk load.
-# Phase 2 replaces this with a primary + two replicas, then an InnoDB Cluster.
+# The PayFlow "production" server: MySQL 8.4 LTS holding the 10M-transaction
+# dataset (Phase 1), plus the operations services that run beside it:
+#   ops              backups on a nightly cron, verification, restores (Phase 3)
+#   binlog-archiver  streams binary logs off the server continuously (Phase 3)
+#   recovery         throwaway server for point-in-time restores (Phase 3 drill)
+# ops/binlog-archiver start with `make ops-up`; recovery only during a drill.
 #
-# Run from the repo root via the Makefile (`make up`), which passes --env-file .env.
+# Run from the repo root via the Makefile, which passes --env-file .env.
 name: payflow
+
+x-ops: &ops
+  image: payflow-ops:8.4
+  pull_policy: never                 # built locally by the ops service
+  environment: &ops-env
+    DB_HOST: mysql                   # not MYSQL_HOST: mysql clients read that implicitly
+    BACKUP_PASSWORD: ${BACKUP_PASSWORD:?set BACKUP_PASSWORD in .env (make env)}
+    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
+  networks: [default, shared]
 
 services:
   mysql:
     image: mysql:8.4
     container_name: payflow-mysql
+    hostname: mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
     ports:
@@ -19,6 +34,7 @@ services:
       # at secure_file_priv: the image's entrypoint chowns that directory and
       # fails on a read-only mount.
       - ../../data:/data:ro
+    networks: [default, shared]
     cap_add:
       - SYS_NICE                       # silences "mbind: Operation not permitted"
     healthcheck:
@@ -27,5 +43,55 @@ services:
       timeout: 5s
       retries: 60
 
+  ops:
+    <<: *ops
+    build: ../ops
+    container_name: payflow-ops
+    profiles: [ops]
+    entrypoint: ["/ops/entrypoint.sh"]
+    restart: unless-stopped
+    volumes:
+      - mysql-data:/var/lib/mysql:ro   # XtraBackup copies the data files directly
+      - backups:/backups
+      - recovery-data:/recovery        # restore target for the PITR drill
+      - ../../backup:/ops:ro
+
+  binlog-archiver:
+    <<: *ops
+    container_name: payflow-binlog-archiver
+    profiles: [ops]
+    entrypoint: ["/ops/binlog-archiver.sh"]
+    restart: unless-stopped
+    volumes:
+      - backups:/backups
+      - ../../backup:/ops:ro
+
+  # Started only by backup/pitr-drill.sh, on a copy restored into recovery-data.
+  recovery:
+    image: mysql:8.4
+    container_name: payflow-recovery
+    hostname: recovery
+    profiles: [recovery]
+    command: ["--server-id=99", "--skip-log-bin", "--skip-replica-start",
+              "--gtid-mode=ON", "--enforce-gtid-consistency=ON",
+              "--innodb-buffer-pool-size=512M"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - recovery-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+      interval: 3s
+      timeout: 5s
+      retries: 200
+
 volumes:
   mysql-data:
+  backups:
+  recovery-data:
+
+networks:
+  # Created by `make network`; shared with the monitoring stack (Phase 5).
+  shared:
+    name: payflow-shared
+    external: true

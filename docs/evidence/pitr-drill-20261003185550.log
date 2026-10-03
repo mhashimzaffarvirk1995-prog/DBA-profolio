@@ -1,0 +1,37 @@
+
+[1m== 0. Preflight[0m
+full backup:  /backups/full/20261003T134527Z
+taken at:     binlog binlog.000005:198, GTIDs d591fa87-be39-11f1-aee6-e647bb577b8a:1-9444
+
+[1m== 1. Application traffic: one deposit every 200 ms[0m
+deposits running against wallet 221138
+
+[1m== 2. KYC activity after the backup (exists only in the binlogs)[0m
+kyc_documents: 475854 rows (checksum 4292686402), of which 5 added after the backup
+
+[1m== 3. INCIDENT: DROP TABLE kyc_documents on production[0m
+dropped at 13:55:55 UTC; payments keep running
+
+[1m== 4. Recovery (production stays online)[0m
+-- 4a. find the DROP in the archived binlogs
+DROP is GTID d591fa87-be39-11f1-aee6-e647bb577b8a:9477 (archived 0.7 s after it ran)
+-- 4b. restore last night's full backup into the recovery volume
+recovery server up on the restored backup in 23.0 s
+-- 4c. replay binlogs from the backup position up to (not including) the DROP
+replayed in 0.4 s; recovery copy has 475854 rows (checksum 4292686402)
+-- 4d. copy the table back into production
+production kyc_documents: 475854 rows (checksum 4292686402), 2 audit triggers restored
+
+[1m== 5. Results[0m
+incident (DROP TABLE)                 13:55:55 UTC
+table back in production              13:56:29 UTC
+RTO (drop -> table restored)          33.3 s
+  find DROP in archive                0.4 s
+  restore backup + start server       23.0 s
+  replay binlogs to just before DROP  0.4 s
+  copy table back to production       9.2 s
+RPO (KYC rows lost)                   0   (post-backup rows recovered: 5/5; checksum identical: yes)
+binlog archive lag at the drop        0.7 s or less
+payments during the incident          155/155 committed, 155 present (production never went down)
+
+Evidence: docs/evidence/pitr-drill-20261003185550.log
