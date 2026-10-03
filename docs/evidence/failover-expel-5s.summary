@@ -1,0 +1,8 @@
+writes attempted 251, committed 158, failed 93
+primary before: node1   primary after: node2
+write outage: 21.1 s (from kill to first committed write on the new primary)
+typical error during the outage:   ERROR 2013 (HY000): Lost connection to MySQL server at 'reading authorization packet', sys
+acknowledged by the database: 158   present after failover: 158
+of the failed attempts, 0 committed anyway (safe to retry: same idempotency key returns the original)
+RPO = 0: no acknowledged write was lost
+node1 back ONLINE as a secondary after 21s (container start + crash recovery + catch-up)

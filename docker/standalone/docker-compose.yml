@@ -18,7 +18,7 @@ services:
       # CSVs for the bulk load, read by the client (LOAD DATA LOCAL). Not mounted
       # at secure_file_priv: the image's entrypoint chowns that directory and
       # fails on a read-only mount.
-      - ../../data/generated:/data/generated:ro
+      - ../../data:/data:ro
     cap_add:
       - SYS_NICE                       # silences "mbind: Operation not permitted"
     healthcheck:

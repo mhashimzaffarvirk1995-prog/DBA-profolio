@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# Bulk-load the generated CSVs (data/generated) into the standalone container.
+# Bulk-load generated CSVs into a MySQL container.
 #
 #   scripts/load_data.sh [database]        default: payflow
+#
+# Environment (defaults load data/generated into the Phase 1 standalone server):
+#   DATA_DIR      directory of CSVs, must live under data/   (data/generated)
+#   COMPOSE_FILE  compose file of the target server           (docker/standalone/docker-compose.yml)
+#   SERVICE       compose service to load into                (mysql)
 #
 # Runs the mysql client inside the Docker container. To load a server running
 # outside Docker instead, set MYSQL_CLIENT to a client command, e.g.
@@ -23,20 +28,26 @@ set -euo pipefail
 
 DB="${1:-payflow}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DATA="$ROOT/data/generated"
-COMPOSE=(docker compose --env-file "$ROOT/.env" -f "$ROOT/docker/standalone/docker-compose.yml")
+DATA="$(cd "${DATA_DIR:-$ROOT/data/generated}" && pwd)"
+SERVICE="${SERVICE:-mysql}"
+COMPOSE=(docker compose --env-file "$ROOT/.env" -f "${COMPOSE_FILE:-$ROOT/docker/standalone/docker-compose.yml}")
 
 sql() {
     if [[ -n "${MYSQL_CLIENT:-}" ]]; then
         $MYSQL_CLIENT --default-character-set=utf8mb4 --local-infile=1 "$@"
     else
-        "${COMPOSE[@]}" exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot --default-character-set=utf8mb4 --local-infile=1 "$@"' mysql "$@"
+        "${COMPOSE[@]}" exec -T "$SERVICE" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot --default-character-set=utf8mb4 --local-infile=1 "$@"' mysql "$@"
     fi
 }
 
-# Where the mysql client sees the CSVs: the bind mount inside the container,
-# or the repo directory when MYSQL_CLIENT runs on this machine.
-if [[ -n "${MYSQL_CLIENT:-}" ]]; then CLIENT_DIR="$DATA"; else CLIENT_DIR="/data/generated"; fi
+# Where the mysql client sees the CSVs: data/ is mounted at /data in every
+# container, or the repo directory itself when MYSQL_CLIENT runs on this machine.
+if [[ -n "${MYSQL_CLIENT:-}" ]]; then
+    CLIENT_DIR="$DATA"
+else
+    [[ "$(dirname "$DATA")" == "$ROOT/data" ]] || { echo "DATA_DIR must be a directory directly under data/" >&2; exit 1; }
+    CLIENT_DIR="/data/$(basename "$DATA")"
+fi
 
 # Parent tables before children.
 TABLES=(currencies countries exchange_rates remittance_fees customers kyc_documents

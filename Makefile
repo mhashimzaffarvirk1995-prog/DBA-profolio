@@ -6,23 +6,29 @@ DB        ?= payflow
 TEST_DB   ?= payflow_test
 TXNS      ?= 10000000
 CUSTOMERS ?= 200000
+DATA_DIR  ?= data/generated
+REPL      := docker compose --env-file .env -f docker/replication/docker-compose.yml
+CLUSTER   := docker compose --env-file .env -f docker/cluster/docker-compose.yml
 
 # Runs the mysql client inside the container as root; extra args follow.
 MYSQL := $(COMPOSE) exec -T mysql sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" exec mysql -uroot --default-character-set=utf8mb4 "$$@"' mysql
 
-.PHONY: help up down destroy shell generate generate-small schema load triggers setup \
-        drop-db test concurrency reconcile workload
+.PHONY: help env up down destroy shell generate generate-small schema load triggers setup \
+        drop-db test concurrency reconcile workload \
+        repl-up repl-setup repl-status repl-promote repl-down repl-destroy \
+        cluster-up cluster-setup cluster-status failover-demo cluster-down cluster-destroy
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_.-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-.env:  ## Create .env with a random root password
-	@sed "s|^MYSQL_ROOT_PASSWORD=.*|MYSQL_ROOT_PASSWORD=$$(openssl rand -hex 16)|" .env.example > .env
-	@echo "Created .env"
+env:  ## Create .env, or add missing keys, with random passwords
+	@scripts/ensure_env.sh
+
+.env: env
 
 # --- container -----------------------------------------------------------------
 
-up: .env  ## Start MySQL and wait until it is healthy
+up: env  ## Start MySQL and wait until it is healthy
 	@mkdir -p data/generated
 	$(COMPOSE) up -d --wait
 
@@ -40,8 +46,8 @@ shell:  ## Interactive mysql prompt on $(DB)
 generate:  ## Generate CSVs (TXNS=10000000 CUSTOMERS=200000)
 	python3 scripts/generate_data.py --transactions $(TXNS) --customers $(CUSTOMERS)
 
-generate-small:  ## Generate a 200k-transaction dataset for quick iteration
-	python3 scripts/generate_data.py --transactions 200000 --customers 20000
+generate-small:  ## 200k-transaction dataset in data/generated-small (Phase 2 labs; or `make load DATA_DIR=...`)
+	python3 scripts/generate_data.py --transactions 200000 --customers 20000 --out data/generated-small
 
 # --- database ------------------------------------------------------------------
 
@@ -51,8 +57,8 @@ schema:  ## Create $(DB) with tables and procedures (fails if it exists)
 	$(MYSQL) $(DB) < schema/01_tables.sql
 	$(MYSQL) $(DB) < schema/02_procedures.sql
 
-load:  ## Bulk-load data/generated into $(DB)
-	scripts/load_data.sh $(DB)
+load:  ## Bulk-load $(DATA_DIR) into $(DB)
+	DATA_DIR=$(DATA_DIR) scripts/load_data.sh $(DB)
 
 triggers:  ## Apply audit and immutability triggers to $(DB)
 	$(MYSQL) $(DB) < schema/03_triggers.sql
@@ -80,3 +86,48 @@ reconcile:  ## Check ledger invariants on $(DB)
 
 workload:  ## Time the reporting queries the tuning phase will optimise
 	$(MYSQL) $(DB) --table -vvv < schema/queries/workload.sql
+
+# --- Phase 2a: classic replication (primary + 2 replicas) ------------------------
+# Stop the standalone server first (make down): memory is shared.
+
+data/generated-small/customers.csv:
+	$(MAKE) generate-small
+
+repl-up: env data/generated-small/customers.csv  ## Start primary + 2 replicas
+	$(REPL) up -d --wait
+
+repl-setup:  ## Load the primary, clone the replicas, start GTID replication
+	docker/replication/setup.sh
+
+repl-status:  ## Replication threads, lag and table checksums
+	docker/replication/status.sh --checksum
+
+repl-promote:  ## Manual failover: make TARGET (default replica1) the primary
+	docker/replication/promote.sh $(or $(TARGET),replica1) --rejoin-old
+
+repl-down:  ## Stop the replication lab (volumes kept)
+	$(REPL) down
+
+repl-destroy:  ## Stop the replication lab and DELETE its volumes
+	$(REPL) down -v
+
+# --- Phase 2b: InnoDB Cluster + MySQL Router -------------------------------------
+
+cluster-up: env data/generated-small/customers.csv  ## Build tools image, start 3 nodes + router
+	$(CLUSTER) up -d --build --wait node1 node2 node3
+	$(CLUSTER) up -d tools router
+
+cluster-setup:  ## Load node1, create the cluster with MySQL Shell, wait for Router
+	docker/cluster/setup.sh
+
+cluster-status:  ## Members, roles, lag, and where Router routes
+	docker/cluster/status.sh
+
+failover-demo:  ## Kill the primary under write load; measure outage, RPO, rejoin
+	docker/cluster/failover-demo.sh
+
+cluster-down:  ## Stop the cluster (volumes kept)
+	$(CLUSTER) down
+
+cluster-destroy:  ## Stop the cluster and DELETE its volumes
+	$(CLUSTER) down -v

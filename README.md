@@ -9,7 +9,7 @@ Every phase is reproducible from this repo on a laptop with Docker.
 | Phase | What it covers | Status |
 |---|---|---|
 | 1. [Schema design](docs/01-schema-design.md) | Normalised MySQL 8.4 schema, double-entry ledger, stored procedures with deadlock-free locking, audit triggers, 10M-transaction dataset | **Done** |
-| 2. Replication and HA | Primary + 2 replicas (GTID), then InnoDB Cluster + MySQL Router, recorded failover | Planned |
+| 2. [Replication and HA](docs/02-replication-ha.md) | Primary + 2 replicas (GTID, clone-seeded) with scripted manual failover; InnoDB Cluster + MySQL Router with measured automatic failover | **Done** |
 | 3. Backup and DR | XtraBackup nightly full, MySQL Shell dumps, binlog archiving, PITR drill with measured RPO/RTO | Planned |
 | 4. Performance tuning | Slow log + pt-query-digest, sysbench load, the five worst queries fixed, before/after numbers | Planned |
 | 5. Monitoring | Prometheus, mysqld_exporter, Grafana dashboards, alerts on replication lag and failed backups | Planned |
@@ -17,6 +17,12 @@ Every phase is reproducible from this repo on a laptop with Docker.
 | 7. Migration | Legacy PostgreSQL → MySQL with row-count and checksum validation | Planned |
 | 8. Cloud | Terraform: RDS MySQL + read replica, automated backups, CloudWatch alarms, snapshot restore | Planned |
 | Ongoing | Health-check, backup-verification and provisioning scripts; runbooks; incident RCA | Planned |
+
+## Phase 2 at a glance
+
+- **Classic replication:** replicas are seeded with the Clone plugin (6 s) and use GTID auto-positioning, `super_read_only` and TLS. Lag stayed at 0 s under ~690 writes/s, and `CHECKSUM TABLE` matched exactly. A scripted manual failover checks for errant GTIDs before attaching anything.
+- **InnoDB Cluster:** three Group Replication nodes built with MySQL Shell's AdminAPI, with MySQL Router in front.
+- **Failover, measured:** a write probe ran through Router while the primary was `SIGKILL`ed. The cluster elected a new primary automatically, the write outage was **21–22 s at default settings (two runs) (6.5 s with `expelTimeout=0`)**, and **RPO was 0**: every acknowledged write was present afterwards. The killed node rejoined by itself in about 20 s. Raw logs are in [docs/evidence/](docs/evidence/).
 
 ## Phase 1 at a glance
 
@@ -44,7 +50,21 @@ pip install -r requirements.txt
 make concurrency        # 16 threads of transfers, zero deadlocks expected
 ```
 
-For quick iteration, run `make generate-small` (200k transactions, a few seconds) instead of `make generate`. `make help` lists every target.
+For quick iteration, run `make generate-small` (200k transactions, a few seconds) and `make setup DATA_DIR=data/generated-small`.
+
+Phase 2 labs (each uses the small dataset; run one at a time):
+
+```bash
+make down                                   # free the standalone server's memory
+make repl-up repl-setup repl-status         # classic replication
+make repl-promote TARGET=replica1           # manual failover
+make repl-down
+make cluster-up cluster-setup               # InnoDB Cluster + Router
+make failover-demo                          # kill the primary under load and measure
+make cluster-down
+```
+
+`make help` lists every target.
 
 ## Layout
 
@@ -56,11 +76,15 @@ schema/
   tests/                 SQL assertions run by `make test`
   queries/               reconciliation checks, reporting workload
 docker/standalone/       Phase 1 single-server Compose file and my.cnf
+docker/replication/      primary + 2 replicas: setup, status/checksums, promote (manual failover)
+docker/cluster/          InnoDB Cluster: AdminAPI setup, Router, failover demo and write probe
 scripts/
   generate_data.py       dataset simulator (stdlib only)
   load_data.sh           LOAD DATA INFILE bulk loader
   concurrency_test.py    locking / deadlock demonstration
+  ensure_env.sh          creates .env / adds missing random passwords
+  lib/common.sh          shared helpers for the docker/* scripts
 docs/                    design notes per phase; runbooks and RCAs to come
 ```
 
-Later phases add `docker/cluster/`, `backup/`, `monitoring/`, `security/`, `migration/` and `terraform/`.
+Later phases add `backup/`, `monitoring/`, `security/`, `migration/` and `terraform/`.

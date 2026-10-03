@@ -1,0 +1,8 @@
+writes attempted 173, committed 144, failed 29
+primary before: node2   primary after: node1
+write outage: 6.5 s (from kill to first committed write on the new primary)
+typical error during the outage:   ERROR 2003 (HY000): Can't connect to remote MySQL server
+acknowledged by the database: 144   present after failover: 144
+of the failed attempts, 0 committed anyway (safe to retry: same idempotency key returns the original)
+RPO = 0: no acknowledged write was lost
+node2 back ONLINE as a secondary after 22s (container start + crash recovery + catch-up)

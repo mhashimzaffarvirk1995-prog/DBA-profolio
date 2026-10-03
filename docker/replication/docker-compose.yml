@@ -1,0 +1,53 @@
+# Phase 2a: classic asynchronous GTID replication, one primary + two replicas.
+# Run from the repo root via the Makefile (`make repl-up`).
+name: payflow-repl
+
+x-mysql: &mysql
+  image: mysql:8.4
+  environment:
+    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+  restart: unless-stopped            # clone restarts mysqld; Docker brings it back
+  cap_add:
+    - SYS_NICE
+  healthcheck:
+    test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+    interval: 3s
+    timeout: 5s
+    retries: 60
+
+services:
+  primary:
+    <<: *mysql
+    hostname: primary
+    container_name: payflow-primary
+    command: ["--server-id=1", "--report-host=primary"]
+    ports: ["127.0.0.1:3311:3306"]
+    volumes:
+      - primary-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+      - ../../data:/data:ro
+
+  replica1:
+    <<: *mysql
+    hostname: replica1
+    container_name: payflow-replica1
+    command: ["--server-id=2", "--report-host=replica1"]
+    ports: ["127.0.0.1:3312:3306"]
+    volumes:
+      - replica1-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+
+  replica2:
+    <<: *mysql
+    hostname: replica2
+    container_name: payflow-replica2
+    command: ["--server-id=3", "--report-host=replica2"]
+    ports: ["127.0.0.1:3313:3306"]
+    volumes:
+      - replica2-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+
+volumes:
+  primary-data:
+  replica1-data:
+  replica2-data:

@@ -1,0 +1,91 @@
+# Phase 2b: InnoDB Cluster — three Group Replication nodes (single primary)
+# behind MySQL Router. Run from the repo root via the Makefile (`make cluster-up`).
+#
+#   app -> router:6446 (read/write, always the current primary)
+#          router:6447 (read-only, round-robin over secondaries)
+name: payflow-cluster
+
+x-node: &node
+  image: mysql:8.4
+  environment:
+    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+  restart: unless-stopped            # clone-based recovery restarts mysqld
+  cap_add:
+    - SYS_NICE
+  healthcheck:
+    test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+    interval: 3s
+    timeout: 5s
+    retries: 60
+
+x-tools: &tools
+  build: .
+  image: payflow-mysql-tools:8.4
+  # Note: always call mysqlsh with --no-defaults here. The base image's
+  # /etc/my.cnf has a [client] socket, and mysqlsh would try to auto-connect to it.
+
+services:
+  node1:
+    <<: *node
+    hostname: node1
+    container_name: payflow-node1
+    command: ["--server-id=101", "--report-host=node1"]
+    ports: ["127.0.0.1:3321:3306"]
+    volumes:
+      - node1-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+      - ../../data:/data:ro           # bulk load goes into node1 before the cluster exists
+
+  node2:
+    <<: *node
+    hostname: node2
+    container_name: payflow-node2
+    command: ["--server-id=102", "--report-host=node2"]
+    ports: ["127.0.0.1:3322:3306"]
+    volumes:
+      - node2-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+
+  node3:
+    <<: *node
+    hostname: node3
+    container_name: payflow-node3
+    command: ["--server-id=103", "--report-host=node3"]
+    ports: ["127.0.0.1:3323:3306"]
+    volumes:
+      - node3-data:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+
+  # MySQL Shell lives here; setup.sh and failover-demo.sh run commands in it.
+  tools:
+    <<: *tools
+    container_name: payflow-tools
+    entrypoint: ["sleep", "infinity"]
+    environment:
+      LC_ALL: C.UTF-8
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      CLUSTER_ADMIN_PASSWORD: ${CLUSTER_ADMIN_PASSWORD:?set CLUSTER_ADMIN_PASSWORD in .env}
+    volumes:
+      - ./:/cluster:ro
+
+  router:
+    <<: *tools
+    container_name: payflow-router
+    hostname: router
+    entrypoint: ["/cluster/router-entrypoint.sh"]
+    restart: unless-stopped
+    environment:
+      LC_ALL: C.UTF-8
+      CLUSTER_ADMIN_PASSWORD: ${CLUSTER_ADMIN_PASSWORD}
+    ports:
+      - "127.0.0.1:6446:6446"           # read/write
+      - "127.0.0.1:6447:6447"           # read-only
+    volumes:
+      - ./:/cluster:ro
+      - router-data:/var/lib/router
+
+volumes:
+  node1-data:
+  node2-data:
+  node3-data:
+  router-data:
