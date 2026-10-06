@@ -17,7 +17,7 @@ RUN printf '%s\n' \
       'baseurl=https://repo.percona.com/pt/yum/release/9/RPMS/$basearch' \
       'enabled=1' 'gpgcheck=1' 'gpgkey=https://repo.percona.com/yum/PERCONA-PACKAGING-KEY' \
       > /etc/yum.repos.d/percona.repo \
- && microdnf install -y percona-xtrabackup-84 percona-toolkit mysql-shell cronie zstd procps-ng cpio \
+ && microdnf install -y percona-xtrabackup-84 percona-toolkit mysql-shell cronie zstd procps-ng cpio hostname \
  && microdnf clean all
 
 # mysqlbinlog from the full client package of exactly the server's version.

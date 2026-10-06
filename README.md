@@ -4,7 +4,7 @@
 ![InnoDB Cluster](https://img.shields.io/badge/HA-InnoDB_Cluster-00758F)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
-![Phases](https://img.shields.io/badge/phases_done-3_of_8-brightgreen)
+![Phases](https://img.shields.io/badge/phases_done-4_of_8-brightgreen)
 
 PayFlow is a fictional money-transfer company that sends money from the UK, the Gulf, North America and Europe to Pakistan, India, Bangladesh and the Philippines. This repository is its **database layer, designed and operated the way a production DBA team would run it**: a schema that refuses bad money data, high availability with measured failover, and, in the coming phases, backup and recovery, tuning, monitoring, security and compliance evidence, migration and cloud.
 
@@ -19,6 +19,7 @@ Everything is reproducible on a laptop with `make`, and every number below was m
 | **Automatic failover** | Primary killed (`SIGKILL`) under live writes: InnoDB Cluster elected a new primary on its own, with a **21–22 s** write outage at default settings (**6.5 s** tuned) |
 | **Zero data loss** | **RPO = 0**: 158 of 158 and 152 of 152 acknowledged writes present after failover |
 | **Replication** | Replicas seeded by Clone in 6 s, **0 s lag** at ~690 writes/s, table checksums identical to the primary |
+| **Performance** | Under a mixed load: "recent activity" screen **15.7 s → 6.7 ms**, fee report **>120 s → 5.6 s**, customer screens 0.5 → 449 per second, payments not slowed |
 | **Backup and recovery** | 7.4 GB hot backup in 29 s; nightly restore test; `DROP TABLE` recovered to the exact moment before: **RTO 33 s, RPO 0**, with payments running throughout |
 | **Tests** | 46 SQL assertions on procedures and triggers, passing natively and in Docker |
 | **Reproducibility** | From empty volumes: replication lab in 38 s, 3-node cluster in 48 s, 10M-row load in 6–8 min |
@@ -46,8 +47,8 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 | 1 | [Schema design](docs/01-schema-design.md) | 3NF schema, double-entry ledger, deadlock-free stored procedures, audit triggers, 10M-row realistic dataset | ✅ Done |
 | 2 | [Replication and HA](docs/02-replication-ha.md) | GTID replication with scripted manual failover; InnoDB Cluster + Router with measured automatic failover | ✅ Done |
 | 3 | [Backup and disaster recovery](docs/03-backup-dr.md) | Nightly XtraBackup + MySQL Shell dumps on cron, continuous binlog archiving, automatic restore verification, PITR drill | ✅ Done |
-| 4 | Performance tuning | Slow log, pt-query-digest, load test; fix the worst queries (baseline: up to 18 s) with before/after numbers | 🔜 Next |
-| 5 | Monitoring | Prometheus, mysqld_exporter, Grafana; alerts on replication lag and failed backups | Planned |
+| 4 | [Performance tuning](docs/04-performance-tuning.md) | Load test, slow log + pt-query-digest, EXPLAIN ANALYZE; query rewrite, online indexes, buffer pool sized from a capacity plan | ✅ Done |
+| 5 | Monitoring | Prometheus, mysqld_exporter, Grafana; alerts on replication lag and failed backups | 🔜 Next |
 | 6 | Security and compliance | Least-privilege roles, TLS, audit log, encryption at rest, monthly access-review report | Planned |
 | 7 | Migration | Legacy PostgreSQL → MySQL, validated by row counts and checksums | Planned |
 | 8 | Cloud | Terraform: Amazon RDS for MySQL with read replica, backups, CloudWatch alarms | Planned |
@@ -73,6 +74,13 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 - **[PITR drill](docs/03-backup-dr.md#the-drill-drop-table-kyc_documents-at-135555):** a table is dropped mid-traffic, then restored on a side server up to the exact GTID before the `DROP` and copied back. RTO was 33 s, RPO 0, and not one payment failed.
 - **Evidence trail:** every run is recorded in `ops.backup_history` for auditors.
 
+### Phase 4: making it fast, with evidence
+
+- **Measure first:** a [load generator](scripts/loadgen.py) runs payments, customer screens and reports together, with the slow log on. `pt-query-digest` showed two queries taking **80 %** of server time.
+- **Fix the cause:** the worst query needed no index. An `OR` across two columns forced a 10M-row scan, and a `UNION ALL` rewrite took it from 19.6 s to 5 ms. Five online indexes (`LOCK=NONE`, under 50 s each) fixed the rest.
+- **Size memory from data:** a [capacity plan](docs/evidence/phase4/capacity.md) found a 1.3 GB hot working set, so the buffer pool went from 1 GB to 2 GB, resized online in 1 s.
+- **Check the cost:** payment throughput and latency were measured in every run. They ended slightly better than before, and the worst case improved 3.5×.
+
 - **A tuning decision backed by data:** the [design doc](docs/02-replication-ha.md#failover-results) traces the outage second by second, shows that `expelTimeout=0` cuts it from 21 s to 6.5 s, and explains why a payments system should still keep the safer default.
 
 ## Skills demonstrated
@@ -86,6 +94,7 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 | GTID replication, Clone plugin, manual failover | [docker/replication/](docker/replication/) |
 | Backup, restore, PITR, binlog archiving, DR drills | [backup/](backup/), [docs/03-backup-dr.md](docs/03-backup-dr.md) |
 | InnoDB Cluster, Group Replication, MySQL Router, MySQL Shell | [docker/cluster/](docker/cluster/) |
+| Query optimisation, indexing, EXPLAIN ANALYZE, slow log, pt-query-digest, capacity planning | [tuning/](tuning/), [docs/04-performance-tuning.md](docs/04-performance-tuning.md) |
 | Testing, reconciliation, evidence-based reporting | [schema/tests/](schema/tests/), [schema/queries/](schema/queries/), [docs/](docs/) |
 | Linux, Bash, Docker, automation with `make` | [Makefile](Makefile), [scripts/lib/common.sh](scripts/lib/common.sh) |
 
@@ -131,6 +140,15 @@ make backup-full backup-verify      # nightly jobs on demand
 make pitr-drill                     # drop a table, recover it, measure RTO/RPO
 ```
 
+**Performance tuning** (needs the venv: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`):
+
+```bash
+make perf-run LABEL=before          # 3-minute mixed load + slow log + pt-query-digest
+make tuning-apply                   # online indexes
+make perf-run LABEL=after ARGS="--q2 rewrite"
+make capacity                       # growth and 12/24-month sizing
+```
+
 `make help` lists every command.
 
 ## Repository layout
@@ -142,6 +160,7 @@ docker/replication/     Phase 2a: primary + 2 replicas (setup, status/checksums,
 docker/cluster/         Phase 2b: InnoDB Cluster, Router, failover demo
 docker/ops/             ops image: XtraBackup, MySQL Shell, Percona Toolkit, mysqlbinlog, cron
 backup/                 Phase 3: backup jobs, binlog archiver, verification, PITR drill
+tuning/                 Phase 4: perf runs, EXPLAIN ANALYZE capture, indexes, capacity plan
 scripts/                data generator, bulk loader, concurrency test, shared helpers
 docs/                   design notes and results per phase
 docs/evidence/          raw logs behind the numbers above

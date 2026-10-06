@@ -1,0 +1,564 @@
+
+# 760ms user time, 140ms system time, 36.19M rss, 42.48M vsz
+# Current date: Tue Oct  6 06:47:16 2026
+# Hostname: 7a3b16463289
+# Files: /var/lib/mysql/slow-before.log
+# Overall: 1.21k total, 11 unique, 3.33 QPS, 5.47x concurrency ___________
+# Time range: 2026-10-06T06:22:11 to 2026-10-06T06:28:15
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time          1992s   100ms    118s      2s     13s      7s   134ms
+# Lock time            4ms       0     3ms     3us     1us    90us       0
+# Rows sent        455.97k       0  65.70k  384.92   19.46   4.51k       0
+# Rows examine     854.90M       9  10.58M 721.70k   9.30M   2.43M   15.25
+# Bytes sent        22.23M      13   3.19M  18.77k   1.96k 230.99k   12.54
+# Query size       193.94k     106     503  163.72  346.17   67.71  174.84
+# Bytes receiv     203.07k     113     519  171.43  363.48   69.27  183.58
+# Created tmp            0       0       0       0       0       0       0
+# Created tmp          167       0       2    0.14    1.96    0.48       0
+# Errno             46.19k       0   2.95k   38.99       0  265.09       0
+# Read first           103       0       2    0.08    0.99    0.30       0
+# Read key         767.59M       1  10.33M 647.99k   9.76M   2.43M   17.65
+# Read last              0       0       0       0       0       0       0
+# Read next        572.41k       0 189.74k  483.22    3.89   9.09k    2.90
+# Read prev              0       0       0       0       0       0       0
+# Read rnd               0       0       0       0       0       0       0
+# Read rnd nex     849.77M       0  10.10M 717.36k   9.30M   2.42M       0
+# Sort merge p           2       0       1    0.00       0    0.04       0
+# Sort range c           0       0       0       0       0       0       0
+# Sort rows         19.53k       0   9.04k   16.48   19.46  369.13       0
+# Sort scan co          76       0       1    0.06    0.99    0.24       0
+
+# Profile
+# Rank Query ID                            Response time   Calls R/Call   
+# ==== =================================== =============== ===== ======== 
+#    1 0x1486459F5464145A6985D3834937C598  1116.7906 56.1%    74  15.0918  0.68 SELECT transactions wallets
+#    2 0x68EEF8BD7D3B203573FD83F87727F247   469.9331 23.6%     4 117.4833  0.00 SELECT ledger_entries wallets
+#    3 0x94DF39716D7D1F9ECA69B3701F75BF25   122.6463  6.2%     8  15.3308  1.49 SELECT kyc_documents customers wallets transactions
+#    4 0xE9BE259BBD93F0C1D31E8904E17F9B11   101.2975  5.1%   596   0.1700  0.07 CALL sp_send_remittance
+#    5 0x3868EC1EE37F2ACDB8C2BF78B990923F    82.2097  4.1%   492   0.1671  0.06 CALL sp_deposit
+#    6 0xA60D2A65973502C6805BF68E49F3A575    35.3481  1.8%     2  17.6741  0.72 SELECT transactions wallets
+#    7 0x4AC92BCFA9C30A49B3F404B5DFA409BA    29.1203  1.5%     2  14.5601  0.17 SELECT transactions
+#    8 0x0FBB1251D9FBB5ACDBD95DB6EE0E27E4    28.2296  1.4%     2  14.1148  0.29 SELECT transactions
+#    9 0x57DA4440244BF470D71994A511E992C5     2.8764  0.1%    21   0.1370  0.01 CALL sp_transfer_funds
+#   10 0x62FB31DC99BA32170D483B4C19871B8D     1.7533  0.1%     3   0.5844  0.12 SELECT wallets customers beneficiaries
+# MISC 0xMISC                                 1.4240  0.1%     9   0.1582   0.0 <1 ITEMS>
+
+# Query 1: 0.21 QPS, 3.24x concurrency, ID 0x1486459F5464145A6985D3834937C598 at byte 383798
+# Scores: V/M = 0.68
+# Time range: 2026-10-06T06:22:29 to 2026-10-06T06:28:14
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          6      74
+# Exec time     56   1117s      7s     22s     15s     19s      3s     14s
+# Lock time      5   218us       0    39us     2us     8us     6us     1us
+# Rows sent      0   1.45k      20      20      20      20       0      20
+# Rows examine  83 710.80M   9.56M   9.65M   9.61M   9.30M       0   9.30M
+# Bytes sent     0 145.73k   1.96k   1.99k   1.97k   1.96k       0   1.96k
+# Query size    13  25.59k     353     355  354.08  346.17       0  346.17
+# Bytes receiv  13  26.74k     369     371  370.08  363.48       0  363.48
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp   88     148       2       2       2       2       0       2
+# Errno          0       0       0       0       0       0       0       0
+# Read first    71      74       1       1       1       1       0       1
+# Read key      99 760.92M  10.23M  10.33M  10.28M  10.25M  53.17k  10.25M
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0     182       2       4    2.46    3.89    0.81    1.96
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex  83 710.80M   9.56M   9.65M   9.61M   9.30M       0   9.30M
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      7   1.45k      20      20      20      20       0      20
+# Sort scan co  97      74       1       1       1       1       0       1
+# String:
+# Databases    payflow
+# End          2026-10-06... (2/2%), 2026-10-06... (1/1%)... 71 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/1%), 2026-10-06... (1/1%)... 72 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  #
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'transactions'\G
+#    SHOW CREATE TABLE `payflow`.`transactions`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'wallets'\G
+#    SHOW CREATE TABLE `payflow`.`wallets`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT t.txn_ref, t.txn_type, t.status, t.amount, t.currency_code, t.created_at
+          FROM transactions t
+         WHERE t.source_wallet_id IN (SELECT wallet_id FROM wallets WHERE customer_id = 114547)
+            OR t.dest_wallet_id   IN (SELECT wallet_id FROM wallets WHERE customer_id = 114547)
+         ORDER BY t.created_at DESC
+         LIMIT 20\G
+
+# Query 2: 0.03 QPS, 3.48x concurrency, ID 0x68EEF8BD7D3B203573FD83F87727F247 at byte 746414
+# Scores: V/M = 0.00
+# Time range: 2026-10-06T06:25:06 to 2026-10-06T06:27:21
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       4
+# Exec time     23    470s    117s    118s    117s    113s       0    113s
+# Lock time      0    22us     1us    12us     5us    11us     4us     9us
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0   1.50M 254.93k 510.04k 383.25k 509.78k 120.57k 497.64k
+# Bytes sent     0   1.08k     277     277     277     277       0     277
+# Query size     0   1.19k     305     305     305     305       0     305
+# Bytes receiv   0   1.25k     321     321     321     321       0     321
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    2       4       1       1       1       1       0       1
+# Errno         25  11.81k   2.95k   2.95k   2.95k   2.95k       0   2.95k
+# Read first     3       4       1       1       1       1       0       1
+# Read key       0 717.27k 118.41k 239.56k 179.32k 233.54k  56.36k 233.54k
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   0 766.50k 127.47k 255.02k 191.63k 245.21k  59.17k 245.21k
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/25%), 2026-10-06... (1/25%)... 2 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/25%), 2026-10-06... (1/25%)... 2 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'ledger_entries'\G
+#    SHOW CREATE TABLE `payflow`.`ledger_entries`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'wallets'\G
+#    SHOW CREATE TABLE `payflow`.`wallets`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT DATE_FORMAT(le.created_at, '%Y-%m') AS month, w.currency_code,
+               SUM(IF(le.entry_type = 'credit', le.amount, -le.amount))
+          FROM ledger_entries le JOIN wallets w ON w.wallet_id = le.wallet_id
+         WHERE w.wallet_type = 'fee_revenue'
+         GROUP BY month, w.currency_code\G
+
+# Query 3: 0.02 QPS, 0.36x concurrency, ID 0x94DF39716D7D1F9ECA69B3701F75BF25 at byte 9159
+# Scores: V/M = 1.49
+# Time range: 2026-10-06T06:22:32 to 2026-10-06T06:28:15
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       8
+# Exec time      6    123s      8s     21s     15s     20s      5s     17s
+# Lock time     89     3ms     1us     3ms   416us     3ms     1ms    19us
+# Rows sent     92 420.87k  13.22k  65.70k  52.61k  65.68k  21.89k  62.55k
+# Rows examine   9  83.02M   9.94M  10.58M  10.38M  10.25M 216.47k  10.25M
+# Bytes sent    91  20.36M 624.00k   3.19M   2.54M   3.18M   1.11M   3.18M
+# Query size     1   3.59k     460     460     460     460       0     460
+# Bytes receiv   1   3.72k     476     476     476     476       0     476
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    4       8       1       1       1       1       0       1
+# Errno          4   2.27k       0   1.13k     290   1.09k  483.43       0
+# Read first    15      16       2       2       2       2       0       2
+# Read key       0   3.61M 324.38k 523.95k 461.73k 509.78k  78.84k 485.50k
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   9  79.61M   9.63M  10.10M   9.95M   9.76M 206.16k   9.76M
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/12%), 2026-10-06... (1/12%)... 6 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/12%), 2026-10-06... (1/12%)... 6 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s  #####################
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'kyc_documents'\G
+#    SHOW CREATE TABLE `payflow`.`kyc_documents`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'customers'\G
+#    SHOW CREATE TABLE `payflow`.`customers`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'wallets'\G
+#    SHOW CREATE TABLE `payflow`.`wallets`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'transactions'\G
+#    SHOW CREATE TABLE `payflow`.`transactions`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT c.customer_id, c.customer_ref, k.doc_type, k.expiry_date
+          FROM kyc_documents k JOIN customers c ON c.customer_id = k.customer_id
+         WHERE k.status = 'expired'
+           AND EXISTS (SELECT 1 FROM wallets w JOIN transactions t ON t.source_wallet_id = w.wallet_id
+                        WHERE w.customer_id = c.customer_id AND t.txn_type = 'remittance'
+                          AND t.created_at >= '2026-09-30 00:00:00' - INTERVAL 30 DAY)\G
+
+# Query 4: 1.71 QPS, 0.29x concurrency, ID 0xE9BE259BBD93F0C1D31E8904E17F9B11 at byte 150401
+# Scores: V/M = 0.07
+# Time range: 2026-10-06T06:22:19 to 2026-10-06T06:28:07
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         49     596
+# Exec time      5    101s   100ms      1s   170ms   339ms   110ms   134ms
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0   9.59k      10      17   16.48   16.81    1.26   16.81
+# Bytes sent     0   7.92k      13      31   13.60   12.54    3.18   12.54
+# Query size    54 104.77k     180     180     180     180       0     180
+# Bytes receiv  53 108.84k     187     187     187     187       0     187
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    0       0       0       0       0       0       0       0
+# Errno         69  32.11k       0   1.61k   55.17       0  282.90       0
+# Read first     0       0       0       0       0       0       0       0
+# Read key       0  10.36k      12      18   17.80   17.65    1.03   17.65
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0   2.14k       3       4    3.68    3.89    0.46    3.89
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   0       0       0       0       0       0       0       0
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/0%), 2026-10-06... (1/0%)... 594 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/0%), 2026-10-06... (1/0%)... 594 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s  #
+#  10s+
+CALL sp_send_remittance(@_sp_send_remittance_arg1,@_sp_send_remittance_arg2,@_sp_send_remittance_arg3,@_sp_send_remittance_arg4,@_sp_send_remittance_arg5,@_sp_send_remittance_arg6)\G
+
+# Query 5: 1.44 QPS, 0.24x concurrency, ID 0x3868EC1EE37F2ACDB8C2BF78B990923F at byte 146351
+# Scores: V/M = 0.06
+# Time range: 2026-10-06T06:22:22 to 2026-10-06T06:28:03
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count         40     492
+# Exec time      4     82s   100ms   942ms   167ms   323ms   103ms   128ms
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0   4.32k       9       9       9       9       0       9
+# Bytes sent     0   6.25k      13      13      13      13       0      13
+# Query size    26  50.93k     106     106     106     106       0     106
+# Bytes receiv  26  54.29k     113     113     113     113       0     113
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    0       0       0       0       0       0       0       0
+# Errno          0       0       0       0       0       0       0       0
+# Read first     0       0       0       0       0       0       0       0
+# Read key       0   5.77k      12      12      12      12       0      12
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   0       0       0       0       0       0       0       0
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/0%), 2026-10-06... (1/0%)... 490 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/0%), 2026-10-06... (1/0%)... 490 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+CALL sp_deposit(@_sp_deposit_arg1,@_sp_deposit_arg2,@_sp_deposit_arg3,@_sp_deposit_arg4,@_sp_deposit_arg5)\G
+
+# Query 6: 0.11 QPS, 1.96x concurrency, ID 0xA60D2A65973502C6805BF68E49F3A575 at byte 835516
+# Scores: V/M = 0.72
+# Time range: 2026-10-06T06:27:36 to 2026-10-06T06:27:54
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       2
+# Exec time      1     35s     15s     20s     18s     20s      4s     18s
+# Lock time      0     7us     1us     6us     3us     6us     3us     3us
+# Rows sent      1   5.02k   2.51k   2.51k   2.51k   2.51k       0   2.51k
+# Rows examine   2  19.87M   9.93M   9.94M   9.94M   9.94M   3.21k   9.94M
+# Bytes sent     0 141.14k  70.57k  70.57k  70.57k  70.57k       0  70.57k
+# Query size     0     760     380     380     380     380       0     380
+# Bytes receiv   0     792     396     396     396     396       0     396
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    1       2       1       1       1       1       0       1
+# Errno          0       0       0       0       0       0       0       0
+# Read first     1       2       1       1       1       1       0       1
+# Read key       0   1.21M 616.56k 619.20k 617.88k 619.20k   1.87k 617.88k
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   2  19.48M   9.74M   9.74M   9.74M   9.74M   2.28k   9.74M
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/50%), 2026-10-06... (1/50%)
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/50%), 2026-10-06... (1/50%)
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'transactions'\G
+#    SHOW CREATE TABLE `payflow`.`transactions`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'wallets'\G
+#    SHOW CREATE TABLE `payflow`.`wallets`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT w.customer_id, t.currency_code, COUNT(*), SUM(t.amount) AS total_sent
+          FROM transactions t JOIN wallets w ON w.wallet_id = t.source_wallet_id
+         WHERE t.txn_type = 'remittance' AND t.status <> 'failed'
+           AND t.created_at >= '2026-09-30 00:00:00' - INTERVAL 30 DAY
+         GROUP BY w.customer_id, t.currency_code
+        HAVING SUM(t.amount) > 10000\G
+
+# Query 7: 0 QPS, 0x concurrency, ID 0x4AC92BCFA9C30A49B3F404B5DFA409BA at byte 853450
+# Scores: V/M = 0.17
+# Time range: all events occurred at 2026-10-06T06:28:07
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       2
+# Exec time      1     29s     13s     16s     15s     16s      2s     15s
+# Lock time      0     2us     1us     1us     1us     1us       0     1us
+# Rows sent      0   1.75k     896     896     896     896       0     896
+# Rows examine   2  19.28M   9.64M   9.64M   9.64M   9.64M  678.12   9.64M
+# Bytes sent     0  83.44k  41.72k  41.72k  41.72k  41.72k    0.71  41.72k
+# Query size     0     682     341     341     341     341       0     341
+# Bytes receiv   0     714     357     357     357     357       0     357
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    1       2       1       1       1       1       0       1
+# Errno          0       0       0       0       0       0       0       0
+# Read first     1       2       1       1       1       1       0       1
+# Read key       0 634.69k 317.18k 317.51k 317.34k 317.51k  238.29 317.34k
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   2  19.29M   9.64M   9.64M   9.64M   9.64M  678.12   9.64M
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/50%), 2026-10-06... (1/50%)
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/50%), 2026-10-06... (1/50%)
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'transactions'\G
+#    SHOW CREATE TABLE `payflow`.`transactions`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT DATE(t.created_at) AS day, t.currency_code, t.payout_currency_code,
+               COUNT(*), SUM(t.amount), SUM(t.fee_amount)
+          FROM transactions t
+         WHERE t.txn_type = 'remittance' AND t.created_at >= '2026-09-30 00:00:00' - INTERVAL 30 DAY
+         GROUP BY DATE(t.created_at), t.currency_code, t.payout_currency_code\G
+
+# Query 8: 0.11 QPS, 1.57x concurrency, ID 0x0FBB1251D9FBB5ACDBD95DB6EE0E27E4 at byte 834685
+# Scores: V/M = 0.29
+# Time range: 2026-10-06T06:27:34 to 2026-10-06T06:27:52
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       2
+# Exec time      1     28s     13s     16s     14s     16s      2s     14s
+# Lock time      0     9us     1us     8us     4us     8us     4us     4us
+# Rows sent      3  18.08k   9.04k   9.04k   9.04k   9.04k       0   9.04k
+# Rows examine   2  19.29M   9.64M   9.65M   9.64M   9.65M   2.93k   9.64M
+# Bytes sent     5   1.25M 642.24k 642.24k 642.24k 642.24k       0 642.24k
+# Query size     0     526     263     263     263     263       0     263
+# Bytes receiv   0     558     279     279     279     279       0     279
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    0       0       0       0       0       0       0       0
+# Errno          0       0       0       0       0       0       0       0
+# Read first     1       2       1       1       1       1       0       1
+# Read key       0       2       1       1       1       1       0       1
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   2  19.27M   9.63M   9.64M   9.63M   9.64M   2.93k   9.63M
+# Sort merge p 100       2       1       1       1       1       0       1
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows     92  18.08k   9.04k   9.04k   9.04k   9.04k       0   9.04k
+# Sort scan co   2       2       1       1       1       1       0       1
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/50%), 2026-10-06... (1/50%)
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/50%), 2026-10-06... (1/50%)
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms
+#    1s
+#  10s+  ################################################################
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'transactions'\G
+#    SHOW CREATE TABLE `payflow`.`transactions`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT t.txn_id, t.txn_ref, t.amount, t.currency_code, t.created_at
+          FROM transactions t
+         WHERE t.status = 'pending' AND t.txn_type = 'remittance'
+           AND t.created_at < '2026-09-30 00:00:00' - INTERVAL 1 DAY
+         ORDER BY t.created_at\G
+
+# Query 9: 0.07 QPS, 0.01x concurrency, ID 0x57DA4440244BF470D71994A511E992C5 at byte 840015
+# Scores: V/M = 0.01
+# Time range: 2026-10-06T06:23:21 to 2026-10-06T06:28:07
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          1      21
+# Exec time      0      3s   101ms   287ms   137ms   180ms    42ms   116ms
+# Lock time      0       0       0       0       0       0       0       0
+# Rows sent      0       0       0       0       0       0       0       0
+# Rows examine   0     210      10      10      10      10       0      10
+# Bytes sent     0     273      13      13      13      13       0      13
+# Query size     1   3.55k     173     173     173     173       0     173
+# Bytes receiv   1   3.69k     180     180     180     180       0     180
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    0       0       0       0       0       0       0       0
+# Errno          0       0       0       0       0       0       0       0
+# Read first     0       0       0       0       0       0       0       0
+# Read key       0     273      13      13      13      13       0      13
+# Read last      0       0       0       0       0       0       0       0
+# Read next      0       0       0       0       0       0       0       0
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   0       0       0       0       0       0       0       0
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/4%), 2026-10-06... (1/4%)... 19 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/4%), 2026-10-06... (1/4%)... 19 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+CALL sp_transfer_funds(@_sp_transfer_funds_arg1,@_sp_transfer_funds_arg2,@_sp_transfer_funds_arg3,@_sp_transfer_funds_arg4,@_sp_transfer_funds_arg5,@_sp_transfer_funds_arg6)\G
+
+# Query 10: 0.02 QPS, 0.01x concurrency, ID 0x62FB31DC99BA32170D483B4C19871B8D at byte 0
+# Scores: V/M = 0.12
+# Time range: 2026-10-06T06:22:11 to 2026-10-06T06:25:07
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          0       3
+# Exec time      0      2s   396ms   960ms   584ms   945ms   260ms   393ms
+# Lock time      3   125us     8us    93us    41us    89us    35us    23us
+# Rows sent      1   8.79k   2.93k   2.93k   2.93k   2.93k       0   2.93k
+# Rows examine   0   1.13M 385.05k 385.05k 385.05k 385.05k       0 385.05k
+# Bytes sent     1 240.82k  80.27k  80.27k  80.27k  80.27k       0  80.27k
+# Query size     0   1.47k     503     503     503     503       0     503
+# Bytes receiv   0   1.52k     519     519     519     519       0     519
+# Created tmp    0       0       0       0       0       0       0       0
+# Created tmp    1       3       1       1       1       1       0       1
+# Errno          0       0       0       0       0       0       0       0
+# Read first     2       3       1       1       1       1       0       1
+# Read key       0 526.80k 175.60k 175.60k 175.60k 175.60k       0 175.60k
+# Read last      0       0       0       0       0       0       0       0
+# Read next     99 569.21k 189.74k 189.74k 189.74k 189.74k       0 189.74k
+# Read prev      0       0       0       0       0       0       0       0
+# Read rnd       0       0       0       0       0       0       0       0
+# Read rnd nex   0 594.74k 198.25k 198.25k 198.25k 198.25k       0 198.25k
+# Sort merge p   0       0       0       0       0       0       0       0
+# Sort range c   0       0       0       0       0       0       0       0
+# Sort rows      0       0       0       0       0       0       0       0
+# Sort scan co   0       0       0       0       0       0       0       0
+# String:
+# Databases    payflow
+# End          2026-10-06... (1/33%), 2026-10-06... (1/33%)... 1 more
+# Hosts        172.18.0.1
+# Start        2026-10-06... (1/33%), 2026-10-06... (1/33%)... 1 more
+# Users        root
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'wallets'\G
+#    SHOW CREATE TABLE `payflow`.`wallets`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'customers'\G
+#    SHOW CREATE TABLE `payflow`.`customers`\G
+#    SHOW TABLE STATUS FROM `payflow` LIKE 'beneficiaries'\G
+#    SHOW CREATE TABLE `payflow`.`beneficiaries`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT w.wallet_id AS wallet, w.customer_id AS customer, w.currency_code AS ccy,
+               MIN(b.beneficiary_id) AS ben
+          FROM wallets w
+          JOIN customers c ON c.customer_id = w.customer_id
+          JOIN beneficiaries b ON b.customer_id = w.customer_id AND b.is_active
+         WHERE w.wallet_type = 'customer' AND c.status = 'active' AND c.kyc_status = 'verified'
+           AND w.wallet_id % 50 = 7
+         GROUP BY w.wallet_id, w.customer_id, w.currency_code
+         LIMIT 3000\G

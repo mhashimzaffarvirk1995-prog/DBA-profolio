@@ -1,0 +1,12 @@
+
+operation                count  errors timeout  per_sec    p50_ms    p95_ms    p99_ms    max_ms
+Q1 statement             16197       0       0     89.4       6.2      21.7      51.3     990.4
+Q2 recent activity       16350       0       0     90.2      18.0     112.9     321.1    3214.8
+Q3 corridor volume          10       0       0      0.1    1288.7    5440.8    5440.8    5440.8
+Q4 AML 30-day               10       0       0      0.1    7940.3   10427.2   10427.2   10427.2
+Q5 stuck remittances        10       0       0      0.1    4325.3    7098.0    7098.0    7098.0
+Q6 expired KYC              12       0       0      0.1    4755.3    8265.8    8265.8    8265.8
+Q7 fee revenue              12       0       0      0.1   12314.4   19345.2   19345.2   19345.2
+app deposit              21001       0       0    115.9      18.6      69.6     142.5    1821.4
+app remittance           20781       0       0    114.7      21.3      79.7     172.4    2829.7
+app transfer             10359       0       0     57.2      14.9      51.2     101.5    2752.8

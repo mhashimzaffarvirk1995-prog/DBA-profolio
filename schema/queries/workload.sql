@@ -1,10 +1,10 @@
 -- =============================================================================
 -- Reporting and app queries the performance-tuning phase will optimise.
 --
--- Phase 1 ships only PK / unique / FK indexes on purpose. Several of these
--- are slow on 10M transactions, and that is the "before" picture: in the
--- tuning phase they are captured with the slow query log, ranked with
--- pt-query-digest and fixed with EXPLAIN ANALYZE evidence.
+-- Phase 1 shipped only PK / unique / FK indexes on purpose, so several of
+-- these were slow on 10M transactions. Phase 4 captured them with the slow
+-- query log, ranked them with pt-query-digest and fixed them (indexes in
+-- tuning/01_indexes.sql, the Q2 rewrite below); see docs/04-performance-tuning.md.
 --
 -- Dates are fixed to the end of the generated window so runs are comparable.
 -- `make workload` prints each statement with its timing.
@@ -26,12 +26,21 @@ SELECT @busy_wallet, @busy_customer;
 CALL sp_wallet_statement(@busy_wallet, '2026-08-01', '2026-09-01');
 
 -- Q2. "Recent activity" screen: last 20 transactions touching a customer.
-SELECT t.txn_ref, t.txn_type, t.status, t.amount, t.currency_code, t.created_at
-  FROM transactions t
- WHERE t.source_wallet_id IN (SELECT wallet_id FROM wallets WHERE customer_id = @busy_customer)
-    OR t.dest_wallet_id   IN (SELECT wallet_id FROM wallets WHERE customer_id = @busy_customer)
- ORDER BY t.created_at DESC
- LIMIT 20;
+-- Rewritten in Phase 4: the original OR across source/dest wallet columns
+-- could not use either index and scanned 10M rows (19.6 s):
+--   WHERE t.source_wallet_id IN (...) OR t.dest_wallet_id IN (...)
+-- As UNION ALL each branch uses its own (wallet, created_at) index: 8 ms.
+SELECT txn_ref, txn_type, status, amount, currency_code, created_at FROM (
+    (SELECT t.txn_ref, t.txn_type, t.status, t.amount, t.currency_code, t.created_at
+       FROM wallets w JOIN transactions t ON t.source_wallet_id = w.wallet_id
+      WHERE w.customer_id = @busy_customer ORDER BY t.created_at DESC LIMIT 20)
+    UNION ALL
+    (SELECT t.txn_ref, t.txn_type, t.status, t.amount, t.currency_code, t.created_at
+       FROM wallets w JOIN transactions t ON t.dest_wallet_id = w.wallet_id
+      WHERE w.customer_id = @busy_customer ORDER BY t.created_at DESC LIMIT 20)
+) recent
+ORDER BY created_at DESC
+LIMIT 20;
 
 -- Q3. Daily corridor volume, last 30 days (ops dashboard).
 SELECT DATE(t.created_at) AS day, t.currency_code, t.payout_currency_code,

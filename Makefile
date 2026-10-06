@@ -17,7 +17,8 @@ MYSQL := $(COMPOSE) exec -T mysql sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" exec 
         drop-db test concurrency reconcile workload \
         repl-up repl-setup repl-status repl-promote repl-down repl-destroy \
         cluster-up cluster-setup cluster-status failover-demo cluster-down cluster-destroy \
-        network ops-up ops-setup backup-full backup-logical backup-verify backup-status pitr-drill
+        network ops-up ops-setup backup-full backup-logical backup-verify backup-status pitr-drill \
+        tuning-apply perf-run explain capacity
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_.-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -160,3 +161,19 @@ backup-status:  ## Backup history (evidence trail) and archived binlogs
 
 pitr-drill:  ## DR drill: drop a table, restore it to the moment before, measure RTO/RPO
 	backup/pitr-drill.sh
+
+# --- Phase 4: performance tuning ---------------------------------------------------
+# Needs `make up ops-up` (pt-query-digest runs in the ops image) and the venv:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+perf-run:  ## Measured load test + slow log + pt-query-digest (LABEL=name, ARGS=loadgen args)
+	tuning/perf-run.sh $(or $(LABEL),run) $(ARGS)
+
+explain:  ## EXPLAIN ANALYZE of the workload queries (LABEL=name)
+	tuning/explain.sh $(or $(LABEL),now)
+
+tuning-apply:  ## Add the Phase 4 indexes online (ALGORITHM=INPLACE, LOCK=NONE)
+	$(MYSQL) $(DB) -vvv < tuning/01_indexes.sql | grep -E "^Query OK|rror"
+
+capacity:  ## Growth trend and 12/24-month disk and memory projection
+	.venv/bin/python tuning/capacity.py

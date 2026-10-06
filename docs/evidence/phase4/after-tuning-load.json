@@ -1,0 +1,112 @@
+{
+  "label": "after-tuning",
+  "duration_s": 181,
+  "q2": "rewrite",
+  "threads": {
+    "app": 8,
+    "screens": 4,
+    "reports": 2
+  },
+  "results": {
+    "Q1 statement": {
+      "count": 40409,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 223.6,
+      "p50_ms": 6.7,
+      "p95_ms": 16.2,
+      "p99_ms": 26.4,
+      "max_ms": 133.4
+    },
+    "Q2 recent activity": {
+      "count": 40620,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 224.7,
+      "p50_ms": 6.7,
+      "p95_ms": 26.1,
+      "p99_ms": 53.8,
+      "max_ms": 747.7
+    },
+    "Q3 corridor volume": {
+      "count": 20,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 0.1,
+      "p50_ms": 1608.4,
+      "p95_ms": 1923.4,
+      "p99_ms": 1923.4,
+      "max_ms": 1923.4
+    },
+    "Q4 AML 30-day": {
+      "count": 20,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 0.1,
+      "p50_ms": 4842.2,
+      "p95_ms": 6227.1,
+      "p99_ms": 6227.1,
+      "max_ms": 6227.1
+    },
+    "Q5 stuck remittances": {
+      "count": 20,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 0.1,
+      "p50_ms": 343.8,
+      "p95_ms": 1758.6,
+      "p99_ms": 1758.6,
+      "max_ms": 1758.6
+    },
+    "Q6 expired KYC": {
+      "count": 22,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 0.1,
+      "p50_ms": 4543.3,
+      "p95_ms": 6236.9,
+      "p99_ms": 6253.1,
+      "max_ms": 6253.1
+    },
+    "Q7 fee revenue": {
+      "count": 20,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 0.1,
+      "p50_ms": 5639.3,
+      "p95_ms": 10398.5,
+      "p99_ms": 10398.5,
+      "max_ms": 10398.5
+    },
+    "app deposit": {
+      "count": 22763,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 125.9,
+      "p50_ms": 21.4,
+      "p95_ms": 56.9,
+      "p99_ms": 95.2,
+      "max_ms": 274.7
+    },
+    "app remittance": {
+      "count": 22629,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 125.2,
+      "p50_ms": 23.0,
+      "p95_ms": 59.4,
+      "p99_ms": 99.7,
+      "max_ms": 307.9
+    },
+    "app transfer": {
+      "count": 11293,
+      "errors": 0,
+      "timeouts": 0,
+      "per_sec": 62.5,
+      "p50_ms": 17.2,
+      "p95_ms": 38.0,
+      "p99_ms": 60.3,
+      "max_ms": 175.9
+    }
+  }
+}
