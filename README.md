@@ -85,6 +85,10 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 
 ### Phase 5: monitoring and operational response
 
+![PayFlow Grafana dashboard showing server health, traffic, connections, buffer pool hit rate and backup freshness](docs/images/grafana-overview.jpg)
+
+*Live monitoring after the alert drills. One standalone server is running; the replication lab is stopped to fit the VM memory budget. Red shaded regions mark alert intervals.*
+
 - **Live metrics and dashboards:** Prometheus probes the standalone server and classic replicas, Grafana shows database and host metrics, and backup jobs report outcomes through Pushgateway.
 - **Measured alerts:** the final production drill detected a failed backup in **29 s** and a stopped database in **39 s**, with firing and resolved webhook delivery verified. Replication lag and stopped-thread drills are also recorded.
 - **Operational safeguards:** memory budgets for the small VM, backup disk-headroom checks, cleanup handlers for interrupted drills, and [alert runbooks](docs/runbooks.md). All six recovery reconciliation checks passed after the final drill.
