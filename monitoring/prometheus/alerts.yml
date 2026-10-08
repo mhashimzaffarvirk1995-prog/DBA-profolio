@@ -1,0 +1,93 @@
+# PayFlow alert rules. Each alert says what is wrong, how bad, and where to
+# look; severity=critical pages immediately (see alertmanager.yml).
+groups:
+  - name: mysql-availability
+    rules:
+      - alert: MySQLDown
+        # Only servers we expect to be up: production always; a lab's servers
+        # once that lab has reported at least once in the last hour.
+        expr: |
+          mysql_up{role="production"} == 0
+          or (mysql_up{role="replication"} == 0 and max_over_time(mysql_up{role="replication"}[1h]) == 1)
+        for: 30s
+        labels: {severity: critical}
+        annotations:
+          summary: "MySQL on {{ $labels.instance }} is unreachable"
+          runbook: "docs/runbooks.md#mysql-down"
+
+      - alert: MySQLRestarted
+        expr: mysql_global_status_uptime < 300
+        labels: {severity: warning}
+        annotations:
+          summary: "MySQL on {{ $labels.instance }} restarted {{ $value | humanizeDuration }} ago (crash or OOM?)"
+
+  - name: mysql-replication
+    rules:
+      - alert: ReplicationStopped
+        expr: mysql_slave_status_replica_io_running == 0 or mysql_slave_status_replica_sql_running == 0
+        for: 30s
+        labels: {severity: critical}
+        annotations:
+          summary: "Replication thread stopped on {{ $labels.instance }}"
+          runbook: "docs/runbooks.md#replication-broken"
+
+      - alert: ReplicationLagHigh
+        expr: mysql_slave_status_seconds_behind_source > 30
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} is {{ $value }}s behind its source"
+          runbook: "docs/runbooks.md#replication-lag"
+
+  - name: backups
+    rules:
+      - alert: BackupFailed
+        expr: payflow_backup_last_status == 0
+        labels: {severity: critical}
+        annotations:
+          summary: "Last {{ $labels.type }} backup FAILED"
+          runbook: "docs/runbooks.md#backup-failed"
+
+      - alert: BackupStale
+        # Nightly jobs: alert if the last success is more than 26 h old.
+        expr: time() - payflow_backup_last_success_timestamp_seconds{type=~"full|verify"} > 26 * 3600
+        labels: {severity: warning}
+        annotations:
+          summary: "No successful {{ $labels.type }} backup for {{ $value | humanizeDuration }}"
+          runbook: "docs/runbooks.md#backup-failed"
+
+  - name: mysql-capacity
+    rules:
+      - alert: ConnectionsHigh
+        expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} uses {{ $value | humanizePercentage }} of max_connections"
+
+      - alert: BufferPoolHitRateLow
+        # Below 99 % means the working set no longer fits (capacity plan, Phase 4).
+        expr: |
+          1 - rate(mysql_global_status_innodb_buffer_pool_reads[5m])
+            / rate(mysql_global_status_innodb_buffer_pool_read_requests[5m]) < 0.99
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Buffer pool hit rate on {{ $labels.instance }} is {{ $value | humanizePercentage }}"
+
+      - alert: DiskSpaceLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint=~"/|/var/lib/docker", fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes < 0.15
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Only {{ $value | humanizePercentage }} disk free on {{ $labels.mountpoint }}"
+          runbook: "docs/runbooks.md#disk-full"
+
+      - alert: SlowQueriesSpike
+        expr: rate(mysql_global_status_slow_queries[5m]) > 1
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }}: {{ $value | humanize }} slow queries/s"

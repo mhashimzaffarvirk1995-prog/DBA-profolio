@@ -7,6 +7,7 @@ x-mysql: &mysql
   environment:
     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
   restart: unless-stopped            # clone restarts mysqld; Docker brings it back
+  networks: [default, shared]        # shared: reachable by the monitoring stack
   cap_add:
     - SYS_NICE
   healthcheck:
@@ -51,3 +52,8 @@ volumes:
   primary-data:
   replica1-data:
   replica2-data:
+
+networks:
+  shared:
+    name: payflow-shared
+    external: true

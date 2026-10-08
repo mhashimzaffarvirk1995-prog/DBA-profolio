@@ -4,7 +4,11 @@ set -Eeuo pipefail   # -E: the ERR trap below also fires inside functions
 # cron starts jobs with an empty environment and PATH=/usr/bin:/bin (no
 # /usr/sbin, where mysqld lives); entrypoint.sh saved the real environment here.
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-[[ -f /etc/ops.env ]] && source /etc/ops.env
+# Cron needs the saved environment; interactive runs may deliberately override
+# credentials (for example the failed-backup monitoring drill).
+if [[ -z "${BACKUP_PASSWORD:-}" && -f /etc/ops.env ]]; then
+    source /etc/ops.env
+fi
 : "${DB_HOST:=mysql}" "${BACKUP_USER:=backup}" "${BACKUP_ROOT:=/backups}"
 : "${BACKUP_PASSWORD:?BACKUP_PASSWORD is not set}"
 : "${KEEP_FULL:=2}" "${KEEP_LOGICAL:=3}"

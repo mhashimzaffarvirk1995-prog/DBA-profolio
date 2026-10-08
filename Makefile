@@ -18,7 +18,8 @@ MYSQL := $(COMPOSE) exec -T mysql sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" exec 
         repl-up repl-setup repl-status repl-promote repl-down repl-destroy \
         cluster-up cluster-setup cluster-status failover-demo cluster-down cluster-destroy \
         network ops-up ops-setup backup-full backup-logical backup-verify backup-status pitr-drill \
-        tuning-apply perf-run explain capacity
+        tuning-apply perf-run explain capacity \
+        monitoring-up monitoring-setup monitoring-down alerts
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_.-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -98,7 +99,7 @@ workload:  ## Time the reporting queries the tuning phase will optimise
 data/generated-small/customers.csv:
 	$(MAKE) generate-small
 
-repl-up: env data/generated-small/customers.csv  ## Start primary + 2 replicas
+repl-up: env network data/generated-small/customers.csv  ## Start primary + 2 replicas
 	$(REPL) up -d --wait
 
 repl-setup:  ## Load the primary, clone the replicas, start GTID replication
@@ -177,3 +178,26 @@ tuning-apply:  ## Add the Phase 4 indexes online (ALGORITHM=INPLACE, LOCK=NONE)
 
 capacity:  ## Growth trend and 12/24-month disk and memory projection
 	.venv/bin/python tuning/capacity.py
+
+# --- Phase 5: monitoring ------------------------------------------------------------
+MONITORING := docker compose --env-file .env -f monitoring/docker-compose.yml
+EXPORTER_SQL = sed "s|__EXPORTER_PASSWORD__|$$(grep '^EXPORTER_PASSWORD=' .env | cut -d= -f2)|" monitoring/setup.sql
+
+monitoring-up: env network  ## Start Prometheus, Grafana (:3000), Alertmanager, exporters
+	$(MONITORING) up -d
+
+monitoring-setup:  ## Create the exporter account on every running server
+	@if docker ps --format '{{.Names}}' | grep -qx payflow-mysql; then $(EXPORTER_SQL) | $(MYSQL) && echo "exporter account: standalone"; fi
+	@for s in primary replica1 replica2; do \
+	    docker ps --format '{{.Names}}' | grep -qx payflow-$$s || continue; \
+	    ro=$$($(REPL) exec -T $$s sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysql -uroot -N -e "SELECT @@super_read_only"' 2>/dev/null); \
+	    [ "$$ro" = 0 ] || continue; \
+	    $(EXPORTER_SQL) | $(REPL) exec -T $$s sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" exec mysql -uroot' \
+	      && echo "exporter account: replication lab via its current primary ($$s), replicated to the others"; \
+	done
+
+monitoring-down:  ## Stop the monitoring stack (data kept)
+	$(MONITORING) down
+
+alerts:  ## Alert notifications received so far
+	@$(MONITORING) exec -T alert-log cat /log/alerts.log 2>/dev/null || echo "no alerts yet"

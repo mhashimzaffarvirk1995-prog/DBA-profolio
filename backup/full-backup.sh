@@ -5,6 +5,16 @@
 JOB=full
 source "$(dirname "$0")/lib.sh"
 
+# Keep headroom for redo and temporary files; fail before consuming the
+# database filesystem when backup and MySQL volumes share the same disk.
+data_bytes=$(du -sb /var/lib/mysql | cut -f1)
+free_bytes=$(df -B1 --output=avail "$BACKUP_ROOT" | tail -1 | tr -d ' ')
+required_bytes=$(( data_bytes + data_bytes / 5 ))
+if (( free_bytes < required_bytes )); then
+    log "insufficient disk space: need ${required_bytes} bytes, have ${free_bytes}"
+    false
+fi
+
 TARGET="$BACKUP_ROOT/full/$(stamp)"
 mkdir -p "$TARGET"
 log "xtrabackup --backup -> $TARGET"

@@ -23,6 +23,9 @@ services:
     image: mysql:8.4
     container_name: payflow-mysql
     hostname: mysql
+    # Restart after a crash. Added after the 2026-10-06 OOM kill left
+    # production down until someone noticed (docs/incidents/2026-10-06-oom.md).
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
     ports:

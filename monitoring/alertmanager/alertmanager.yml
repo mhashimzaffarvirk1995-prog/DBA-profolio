@@ -1,0 +1,24 @@
+# Alert routing. In production the receiver would be Slack/PagerDuty/email;
+# here a webhook logs each notification (monitoring/alert-log).
+route:
+  receiver: alert-log
+  group_by: [alertname, instance]
+  group_wait: 10s          # wait briefly to batch related alerts
+  group_interval: 1m
+  repeat_interval: 4h      # re-notify if still firing
+  routes:
+    - matchers: [severity="critical"]
+      receiver: alert-log
+      group_wait: 0s       # page immediately
+
+receivers:
+  - name: alert-log
+    webhook_configs:
+      - url: http://alert-log:5001/
+        send_resolved: true
+
+# A server that is down also stops replicating; don't page twice for it.
+inhibit_rules:
+  - source_matchers: [alertname="MySQLDown"]
+    target_matchers: [alertname=~"Replication.*"]
+    equal: [instance]

@@ -1,0 +1,110 @@
+# Phase 5: monitoring and alerting for every PayFlow MySQL server.
+#
+#   mysqld-exporter  one multi-target exporter; Prometheus asks it to probe
+#                    each server (mysql, primary, replica1, replica2)
+#   node-exporter    disk and host metrics of the Docker VM
+#   pushgateway      where backup jobs report success/failure (Phase 3)
+#   prometheus       scrapes everything, evaluates alerts.yml
+#   alertmanager     groups and routes alerts -> alert-log (webhook receiver)
+#   grafana          dashboards, provisioned from grafana/
+#
+# Joins the payflow-shared network so it can reach whichever lab is running.
+# Run via `make monitoring-up`.
+name: payflow-monitoring
+
+services:
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.20.0
+    container_name: payflow-mysqld-exporter
+    # The password comes from .env and is written to a private option file at
+    # start, so it never appears in a command line or a committed file.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        umask 077
+        printf '[client]\nuser=exporter\npassword=%s\n' "$$EXPORTER_PASSWORD" > /tmp/.my.cnf
+        exec /bin/mysqld_exporter --config.my-cnf=/tmp/.my.cnf \
+          --collect.info_schema.innodb_metrics \
+          --collect.info_schema.processlist \
+          --collect.info_schema.tables \
+          --collect.binlog_size \
+          --collect.engine_innodb_status
+    environment:
+      EXPORTER_PASSWORD: ${EXPORTER_PASSWORD:?set EXPORTER_PASSWORD in .env (make env)}
+    networks: [default, shared]
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: payflow-node-exporter
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    restart: unless-stopped
+
+  pushgateway:
+    image: prom/pushgateway:v1.11.3
+    container_name: payflow-pushgateway
+    hostname: pushgateway
+    networks: [default, shared]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    container_name: payflow-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    networks: [default, shared]
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    container_name: payflow-alertmanager
+    ports: ["127.0.0.1:9093:9093"]
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+    restart: unless-stopped
+
+  # Stand-in for Slack / PagerDuty / email: logs every notification it gets.
+  alert-log:
+    image: python:3.12-alpine
+    container_name: payflow-alert-log
+    command: ["python", "-u", "/app/receiver.py"]
+    volumes:
+      - ./alert-log:/app:ro
+      - alert-log:/log
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    container_name: payflow-grafana
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      GOMEMLIMIT: 384MiB
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"          # local lab: view dashboards without logging in
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/payflow-mysql.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    mem_limit: 512m
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  alert-log:
+
+networks:
+  shared:
+    name: payflow-shared
+    external: true

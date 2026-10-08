@@ -4,7 +4,7 @@
 ![InnoDB Cluster](https://img.shields.io/badge/HA-InnoDB_Cluster-00758F)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
-![Phases](https://img.shields.io/badge/phases_done-4_of_8-brightgreen)
+![Phases](https://img.shields.io/badge/phases_done-5_of_8-brightgreen)
 
 PayFlow is a fictional money-transfer company that sends money from the UK, the Gulf, North America and Europe to Pakistan, India, Bangladesh and the Philippines. This repository is its **database layer, designed and operated the way a production DBA team would run it**: a schema that refuses bad money data, high availability with measured failover, and, in the coming phases, backup and recovery, tuning, monitoring, security and compliance evidence, migration and cloud.
 
@@ -48,7 +48,7 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 | 2 | [Replication and HA](docs/02-replication-ha.md) | GTID replication with scripted manual failover; InnoDB Cluster + Router with measured automatic failover | ✅ Done |
 | 3 | [Backup and disaster recovery](docs/03-backup-dr.md) | Nightly XtraBackup + MySQL Shell dumps on cron, continuous binlog archiving, automatic restore verification, PITR drill | ✅ Done |
 | 4 | [Performance tuning](docs/04-performance-tuning.md) | Load test, slow log + pt-query-digest, EXPLAIN ANALYZE; query rewrite, online indexes, buffer pool sized from a capacity plan | ✅ Done |
-| 5 | Monitoring | Prometheus, mysqld_exporter, Grafana; alerts on replication lag and failed backups | 🔜 Next |
+| 5 | [Monitoring](docs/05-monitoring.md) | Prometheus, mysqld_exporter, Grafana; replication, failed-backup and database-down alert drills | ✅ Done |
 | 6 | Security and compliance | Least-privilege roles, TLS, audit log, encryption at rest, monthly access-review report | Planned |
 | 7 | Migration | Legacy PostgreSQL → MySQL, validated by row counts and checksums | Planned |
 | 8 | Cloud | Terraform: Amazon RDS for MySQL with read replica, backups, CloudWatch alarms | Planned |
@@ -83,6 +83,12 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 
 - **A tuning decision backed by data:** the [design doc](docs/02-replication-ha.md#failover-results) traces the outage second by second, shows that `expelTimeout=0` cuts it from 21 s to 6.5 s, and explains why a payments system should still keep the safer default.
 
+### Phase 5: monitoring and operational response
+
+- **Live metrics and dashboards:** Prometheus probes the standalone server and classic replicas, Grafana shows database and host metrics, and backup jobs report outcomes through Pushgateway.
+- **Measured alerts:** the final production drill detected a failed backup in **29 s** and a stopped database in **39 s**, with firing and resolved webhook delivery verified. Replication lag and stopped-thread drills are also recorded.
+- **Operational safeguards:** memory budgets for the small VM, backup disk-headroom checks, cleanup handlers for interrupted drills, and [alert runbooks](docs/runbooks.md). All six recovery reconciliation checks passed after the final drill.
+
 ## Skills demonstrated
 
 | DBA skill | Where |
@@ -95,6 +101,7 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 | Backup, restore, PITR, binlog archiving, DR drills | [backup/](backup/), [docs/03-backup-dr.md](docs/03-backup-dr.md) |
 | InnoDB Cluster, Group Replication, MySQL Router, MySQL Shell | [docker/cluster/](docker/cluster/) |
 | Query optimisation, indexing, EXPLAIN ANALYZE, slow log, pt-query-digest, capacity planning | [tuning/](tuning/), [docs/04-performance-tuning.md](docs/04-performance-tuning.md) |
+| Monitoring, dashboards, alert routing, incident response | [monitoring/](monitoring/), [docs/05-monitoring.md](docs/05-monitoring.md), [docs/runbooks.md](docs/runbooks.md) |
 | Testing, reconciliation, evidence-based reporting | [schema/tests/](schema/tests/), [schema/queries/](schema/queries/), [docs/](docs/) |
 | Linux, Bash, Docker, automation with `make` | [Makefile](Makefile), [scripts/lib/common.sh](scripts/lib/common.sh) |
 
@@ -161,6 +168,7 @@ docker/cluster/         Phase 2b: InnoDB Cluster, Router, failover demo
 docker/ops/             ops image: XtraBackup, MySQL Shell, Percona Toolkit, mysqlbinlog, cron
 backup/                 Phase 3: backup jobs, binlog archiver, verification, PITR drill
 tuning/                 Phase 4: perf runs, EXPLAIN ANALYZE capture, indexes, capacity plan
+monitoring/             Phase 5: metrics, dashboards, alert rules and lab drills
 scripts/                data generator, bulk loader, concurrency test, shared helpers
 docs/                   design notes and results per phase
 docs/evidence/          raw logs behind the numbers above

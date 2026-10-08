@@ -1,0 +1,16 @@
+== 1. nightly backup fails (backup account password wrong)
+   BackupFailed fired after 29s; rerunning the backup correctly
+| 2026-10-08T11:43:52Z | full backup run with a wrong password | BackupFailed | 29 s | 35 s |
+== 2. production server stops
+   MySQLDown fired after 39s; starting it again
+| 2026-10-08T11:45:41Z | docker stop payflow-mysql | MySQLDown | 39 s | 29 s |
+
+Notifications received (monitoring/alert-log):
+2026-10-08T11:41:52Z FIRING   critical BackupFailed full - Last full backup FAILED
+2026-10-08T11:41:52Z FIRING   critical BackupFailed logical - Last logical backup FAILED
+2026-10-08T11:43:08Z RESOLVED warning  MySQLRestarted mysql - MySQL on mysql restarted 4m 51s ago (crash or OOM?)
+2026-10-08T11:43:50Z RESOLVED critical BackupFailed full - Last full backup FAILED
+2026-10-08T11:43:50Z FIRING   critical BackupFailed logical - Last logical backup FAILED
+2026-10-08T11:44:41Z FIRING   critical MySQLDown mysql - MySQL on mysql is unreachable
+2026-10-08T11:45:11Z FIRING   warning  MySQLRestarted mysql - MySQL on mysql restarted 15s ago (crash or OOM?)
+2026-10-08T11:45:40Z RESOLVED critical MySQLDown mysql - MySQL on mysql is unreachable

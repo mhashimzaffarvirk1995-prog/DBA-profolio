@@ -1,0 +1,7 @@
+== 1. nightly backup fails (backup account password wrong)
+   BackupFailed fired after 13s; rerunning the backup correctly
+| 2026-10-08T11:34:59Z | full backup run with a wrong password | BackupFailed | 13 s | 8 s |
+== 2. production server stops
+   MySQLDown fired after 39s; starting it again
+| 2026-10-08T11:36:05Z | docker stop payflow-mysql | MySQLDown | 39 s | 15 s |
+monitoring/alert-drill.sh: line 109: syntax error near unexpected token `;;'

@@ -1,0 +1,133 @@
+{
+  "grafana": {
+    "database": "ok",
+    "version": "13.2.3",
+    "commit": "90ffed056f0884267356c12a0eeb72a022af53f1"
+  },
+  "targets": [
+    {
+      "instance": "mysql",
+      "health": "up",
+      "lastError": ""
+    },
+    {
+      "instance": "primary",
+      "health": "up",
+      "lastError": ""
+    },
+    {
+      "instance": "replica1",
+      "health": "up",
+      "lastError": ""
+    },
+    {
+      "instance": "replica2",
+      "health": "up",
+      "lastError": ""
+    },
+    {
+      "instance": "docker-vm",
+      "health": "up",
+      "lastError": ""
+    },
+    {
+      "instance": "localhost:9090",
+      "health": "up",
+      "lastError": ""
+    },
+    {
+      "instance": "pushgateway:9091",
+      "health": "up",
+      "lastError": ""
+    }
+  ],
+  "mysql_up": [
+    {
+      "metric": {
+        "__name__": "mysql_up",
+        "instance": "mysql",
+        "job": "mysql",
+        "lab": "standalone",
+        "role": "production"
+      },
+      "value": [
+        1791460162.841,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "__name__": "mysql_up",
+        "instance": "replica1",
+        "job": "mysql",
+        "lab": "replication",
+        "role": "replication"
+      },
+      "value": [
+        1791460162.841,
+        "0"
+      ]
+    },
+    {
+      "metric": {
+        "__name__": "mysql_up",
+        "instance": "primary",
+        "job": "mysql",
+        "lab": "replication",
+        "role": "replication"
+      },
+      "value": [
+        1791460162.841,
+        "0"
+      ]
+    },
+    {
+      "metric": {
+        "__name__": "mysql_up",
+        "instance": "replica2",
+        "job": "mysql",
+        "lab": "replication",
+        "role": "replication"
+      },
+      "value": [
+        1791460162.841,
+        "0"
+      ]
+    }
+  ],
+  "payflow_backup_last_status": [
+    {
+      "metric": {
+        "__name__": "payflow_backup_last_status",
+        "job": "payflow_backup",
+        "type": "full"
+      },
+      "value": [
+        1791460162.843,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "__name__": "payflow_backup_last_status",
+        "job": "payflow_backup",
+        "type": "logical"
+      },
+      "value": [
+        1791460162.843,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "__name__": "payflow_backup_last_status",
+        "job": "payflow_backup",
+        "type": "verify"
+      },
+      "value": [
+        1791460162.843,
+        "1"
+      ]
+    }
+  ]
+}

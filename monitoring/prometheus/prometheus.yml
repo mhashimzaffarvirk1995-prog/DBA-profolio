@@ -1,0 +1,42 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files: [alerts.yml]
+
+alerting:
+  alertmanagers:
+    - static_configs: [{targets: ["alertmanager:9093"]}]
+
+scrape_configs:
+  # Every MySQL server through one multi-target mysqld_exporter: Prometheus
+  # calls /probe?target=<server>, and the server becomes the instance label.
+  # Servers of labs that aren't running simply show as down (mysql_up = 0);
+  # the MySQLDown alert only covers the ones listed in role "production".
+  - job_name: mysql
+    metrics_path: /probe
+    params: {auth_module: [client]}
+    static_configs:
+      - targets: ["mysql:3306"]
+        labels: {role: production, lab: standalone}
+      - targets: ["primary:3306", "replica1:3306", "replica2:3306"]
+        labels: {role: replication, lab: replication}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        regex: "([^:]+):.*"
+        target_label: instance
+      - target_label: __address__
+        replacement: mysqld-exporter:9104
+
+  - job_name: node
+    static_configs: [{targets: ["node-exporter:9100"], labels: {instance: docker-vm}}]
+
+  # Backup jobs push their outcome here; honor_labels keeps their "type" label.
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs: [{targets: ["pushgateway:9091"]}]
+
+  - job_name: prometheus
+    static_configs: [{targets: ["localhost:9090"]}]
