@@ -1,0 +1,42 @@
+ Container payflow-security-mysql-1 Recreate 
+ Container payflow-security-mysql-1 Recreated 
+ Container payflow-security-keyring-init-1 Starting 
+ Container payflow-security-keyring-init-1 Started 
+ Container payflow-security-keyring-init-1 Waiting 
+ Container payflow-security-keyring-init-1 Exited 
+ Container payflow-security-mysql-1 Starting 
+ Container payflow-security-mysql-1 Started 
+ Container payflow-security-keyring-init-1 Waiting 
+ Container payflow-security-mysql-1 Waiting 
+ Container payflow-security-keyring-init-1 Exited 
+ Container payflow-security-mysql-1 Healthy 
+NAME	ENCRYPTION
+encryption_demo/secret	Y
+STATUS_KEY	STATUS_VALUE
+Component_name	component_keyring_file
+Author	Oracle Corporation
+License	GPL
+Implementation_name	component_keyring_file
+Version	1.0
+Component_status	Active
+Data_file	/keyring/keys
+Read_only	No
+ Container payflow-security-mysql-1 Recreate 
+ Container payflow-security-mysql-1 Recreated 
+ Container payflow-security-keyring-init-1 Starting 
+ Container payflow-security-keyring-init-1 Started 
+ Container payflow-security-keyring-init-1 Waiting 
+ Container payflow-security-keyring-init-1 Exited 
+ Container payflow-security-mysql-1 Starting 
+ Container payflow-security-mysql-1 Started 
+ Container payflow-security-mysql-1 Waiting 
+ Container payflow-security-keyring-init-1 Waiting 
+ Container payflow-security-keyring-init-1 Exited 
+ Container payflow-security-mysql-1 Healthy 
+@@innodb_redo_log_encrypt	@@innodb_undo_log_encrypt	@@binlog_encryption
+1	1	1
+NAME	ENCRYPTION
+encryption_demo/secret	Y
+PASS: encrypted tablespace readable after container recreation with persistent keyring
+ Container payflow-security-mysql-1 Stopping 
+ Container payflow-security-mysql-1 Stopped 

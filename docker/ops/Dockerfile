@@ -31,3 +31,18 @@ RUN set -eux; \
     rm /tmp/client.rpm; mysqlbinlog --version
 
 ENV LC_ALL=C.UTF-8
+
+# Authenticated streaming encryption, pinned to official release asset digests.
+RUN set -eu; arch="$(uname -m)"; \
+    case "$arch" in \
+      aarch64) age_arch=arm64; digest=c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a ;; \
+      x86_64) age_arch=amd64; digest=bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377 ;; \
+      *) exit 1 ;; esac; \
+    curl -fsSL "https://github.com/FiloSottile/age/releases/download/v1.3.1/age-v1.3.1-linux-$age_arch.tar.gz" -o /tmp/age.tar.gz; \
+    echo "$digest  /tmp/age.tar.gz" | sha256sum -c -; \
+    tar -xzf /tmp/age.tar.gz -C /tmp; \
+    cp /tmp/age/age /tmp/age/age-keygen /usr/local/bin/; \
+    rm -rf /tmp/age /tmp/age.tar.gz
+
+# cmp validates encrypted round trips; flock serializes restore/backup jobs.
+RUN microdnf install -y diffutils util-linux && microdnf clean all

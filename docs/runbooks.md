@@ -87,9 +87,9 @@ Every incident follows the same pattern:
    SHOW BINARY LOGS;
    ```
 2. **Quick wins, safest first:**
-   - delete old backup directories beyond retention
+   - retire old full backups only after a newer encrypted backup passes independent restore verification; preserve matching encrypted key escrow
    - `PURGE BINARY LOGS BEFORE NOW() - INTERVAL 3 DAY`, but **only** after confirming the archiver has copied them and no replica still needs them
-   - remove slow logs left over from tuning runs
+   - encrypt and round-trip verify historical slow logs before retiring plaintext copies
 3. **Never** delete files inside the MySQL data directory by hand.
 4. **Afterwards:** revisit the capacity plan ([Phase 4](04-performance-tuning.md#6-capacity-plan)). Budget is about 3× the database size.
 
@@ -100,5 +100,21 @@ Every incident follows the same pattern:
 
 ## How to restore
 
-- **One table, to a point in time:** follow the [PITR drill](03-backup-dr.md#the-drill-drop-table-kyc_documents-at-135555). Restore on a side server, replay binlogs up to the bad GTID, then copy the table back.
-- **Whole server:** run `xtrabackup --copy-back` from `/backups/full/latest` into an empty data volume, start MySQL, then replay archived binlogs from the backup's `xtrabackup_binlog_info` position.
+- **Encrypted restore verification:** `make backup-verify` authenticates the encrypted inventory, recovers the escrowed keyring into a separate volume, decrypts and restores to scratch, and checks data/balances. It leaves production untouched.
+- **One table, to a point in time:** `make pitr-drill` demonstrates the current encrypted workflow using a disposable ops probe. The earlier [Phase 3 drill](03-backup-dr.md#the-drill-drop-table-kyc_documents-at-135555) is historical evidence. For a real incident, preserve production, use a separate recovery server, recover its keys with `restore_keyring`, restore the selected full backup with `restore_full` from `backup/crypto.sh`, decrypt required archived binlogs into RAM and replay up to the unwanted GTID. Review checksums before copying a business table back.
+- **Whole server:** the current backups contain `.age` envelopes and cannot be passed directly to `xtrabackup --copy-back`. Follow the [Phase 6 key recovery workflow](06-security-compliance.md), supplying the private age identity and matching encrypted keyring snapshot. Restore into an empty, isolated data volume; use the recovered writable keyring and early component manifests, then replay the encrypted archive from `xtrabackup_binlog_info`. Validate data and access controls before cutover.
+- **Logical dump:** authenticate/decrypt into a restricted RAM staging directory with `open_tree`, then use MySQL Shell `util.loadDump` on an isolated server. Remove staging after verification; do not publish decrypted dumps to persistent storage.
+
+## Security audit collection
+
+`AuditCollectorDown`, `AuditCollectorStale`, or `AuditBufferAlmostFull`: inspect
+`docker logs payflow-audit-collector`, then run `make security-audit-verify`.
+A failed HMAC verification is an incident: preserve the audit volume and exported
+checkpoint; do not rewrite the chain to make verification pass. For a stalled
+rotation inspect `/run/audit/mysql.log.rotated`, `/run/audit/rotation-token`, and
+the matching token in `/audit-events/ack-<inode>`. The raw log lives in RAM. Do not
+remove it until the independent collector acknowledges it. Restore a stopped
+collector with `docker compose --env-file .env -f docker/standalone/docker-compose.yml up -d audit-collector`.
+Then run `/ops/rotate-audit.sh` in the ops container and verify that metrics resume.
+A host crash can lose unread RAM events; export signed checkpoints and audit logs
+to a separate protected system in a real deployment.

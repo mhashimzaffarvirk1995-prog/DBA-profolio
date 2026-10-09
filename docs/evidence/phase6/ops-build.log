@@ -1,0 +1,59 @@
+time="2026-10-09T12:52:07+05:00" level=warning msg="buildx Docker CLI plugin not found: falling back to the classic builder. BuildKit-only build features (multi-arch, secrets, ssh, additional contexts, ...) will not be available"
+ Image payflow-ops:8.4 Building 
+ Image payflow-ops:8.4 Building 
+Sending build context to Docker daemon  1.369kB
+Step 1/7 : FROM mysql:8.4
+ ---> 6ea90827b110
+Step 2/7 : RUN printf '%s\n'       '[percona-pxb-84-lts]' 'name=Percona XtraBackup 8.4 LTS'       'baseurl=https://repo.percona.com/pxb-84-lts/yum/release/9/RPMS/$basearch'       'enabled=1' 'gpgcheck=1' 'gpgkey=https://repo.percona.com/yum/PERCONA-PACKAGING-KEY'       ''       '[percona-tools]' 'name=Percona Toolkit'       'baseurl=https://repo.percona.com/pt/yum/release/9/RPMS/$basearch'       'enabled=1' 'gpgcheck=1' 'gpgkey=https://repo.percona.com/yum/PERCONA-PACKAGING-KEY'       > /etc/yum.repos.d/percona.repo  && microdnf install -y percona-xtrabackup-84 percona-toolkit mysql-shell cronie zstd procps-ng cpio hostname  && microdnf clean all
+ ---> Using cache
+ ---> 7f0f69cd77bf
+Step 3/7 : RUN set -eux;     ver="$(rpm -q --qf '%{VERSION}-%{RELEASE}' mysql-community-server-minimal)";     curl -fsSLo /tmp/client.rpm       "https://repo.mysql.com/yum/mysql-8.4-community/el/9/$(uname -m)/mysql-community-client-${ver}.$(uname -m).rpm";     cd / && rpm2cpio /tmp/client.rpm | cpio -idm ./usr/bin/mysqlbinlog;     rm /tmp/client.rpm; mysqlbinlog --version
+ ---> Using cache
+ ---> 98c265ab2b37
+Step 4/7 : ENV LC_ALL=C.UTF-8
+ ---> Using cache
+ ---> c4d51e8a2b40
+Step 5/7 : RUN set -eu; arch="$(uname -m)";     case "$arch" in       aarch64) age_arch=arm64; digest=c6878a324421b69e3e20b00ba17c04bc5c6dab0030cfe55bf8f68fa8d9e9093a ;;       x86_64) age_arch=amd64; digest=bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377 ;;       *) exit 1 ;; esac;     curl -fsSL "https://github.com/FiloSottile/age/releases/download/v1.3.1/age-v1.3.1-linux-$age_arch.tar.gz" -o /tmp/age.tar.gz;     echo "$digest  /tmp/age.tar.gz" | sha256sum -c -;     tar -xzf /tmp/age.tar.gz -C /tmp;     cp /tmp/age/age /tmp/age/age-keygen /usr/local/bin/;     rm -rf /tmp/age /tmp/age.tar.gz
+ ---> Using cache
+ ---> a6ba5b475b24
+Step 6/7 : RUN microdnf install -y diffutils util-linux && microdnf clean all
+ ---> Running in 7bce5986a1d2
+Downloading metadata...
+Downloading metadata...
+Downloading metadata...
+Downloading metadata...
+Downloading metadata...
+Downloading metadata...
+Package                                    Repository            Size
+Installing:                                                          
+ diffutils-3.7-12.el9.aarch64              ol9_baseos_latest 440.1 kB
+ libfdisk-2.37.4-25.0.1.el9.aarch64        ol9_baseos_latest 149.7 kB
+ libutempter-1.2.1-6.el9.aarch64           ol9_baseos_latest  31.1 kB
+ util-linux-2.37.4-25.0.1.el9.aarch64      ol9_baseos_latest   2.6 MB
+ util-linux-core-2.37.4-25.0.1.el9.aarch64 ol9_baseos_latest 527.8 kB
+Transaction Summary:
+ Installing:        5 packages
+ Reinstalling:      0 packages
+ Upgrading:         0 packages
+ Obsoleting:        0 packages
+ Removing:          0 packages
+ Downgrading:       0 packages
+Downloading packages...
+Running transaction test...
+Installing: util-linux-core;2.37.4-25.0.1.el9;aarch64;ol9_baseos_latest
+Installing: libutempter;1.2.1-6.el9;aarch64;ol9_baseos_latest
+Installing: libfdisk;2.37.4-25.0.1.el9;aarch64;ol9_baseos_latest
+Installing: util-linux;2.37.4-25.0.1.el9;aarch64;ol9_baseos_latest
+Installing: diffutils;3.7-12.el9;aarch64;ol9_baseos_latest
+Complete.
+Complete.
+ ---> Removed intermediate container 7bce5986a1d2
+ ---> 0f9090388558
+Step 7/7 : LABEL com.docker.compose.image.builder=classic
+ ---> Running in aae02dacf1d6
+ ---> Removed intermediate container aae02dacf1d6
+ ---> 3d779eb24596
+Successfully built 3d779eb24596
+Successfully tagged payflow-ops:8.4
+ Image payflow-ops:8.4 Built 
+ Image payflow-ops:8.4 Built 

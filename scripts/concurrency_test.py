@@ -80,7 +80,8 @@ def read_env():
 def connect(args):
     where = {"unix_socket": args.socket} if args.socket else {"host": args.host, "port": args.port}
     return mysql.connector.connect(user=args.user, password=args.password, database=args.database,
-                                   autocommit=True, **where)
+                                   autocommit=True, ssl_ca=os.path.join(ROOT, ".private/tls/ca.pem"),
+                                   ssl_verify_cert=True, ssl_verify_identity=True, **where)
 
 
 def setup(args):
@@ -177,8 +178,8 @@ def main():
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=3306)
     p.add_argument("--socket", help="connect through a Unix socket instead of TCP")
-    p.add_argument("--user", default="root")
-    p.add_argument("--password", default=env.get("MYSQL_ROOT_PASSWORD", ""))
+    p.add_argument("--user", default="payflow_bench" if os.path.exists(os.path.join(ROOT, ".private/security-enabled")) else "root")
+    p.add_argument("--password", default=env.get("BENCH_PASSWORD" if os.path.exists(os.path.join(ROOT, ".private/security-enabled")) else "MYSQL_ROOT_PASSWORD", ""))
     p.add_argument("--database", default="payflow_test")
     p.add_argument("--threads", type=int, default=16)
     p.add_argument("--ops", type=int, default=300, help="transfers per thread")

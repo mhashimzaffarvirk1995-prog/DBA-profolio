@@ -91,3 +91,27 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: "{{ $labels.instance }}: {{ $value | humanize }} slow queries/s"
+
+  - name: security-audit
+    rules:
+      - alert: AuditCollectorDown
+        expr: up{job="audit"} == 0 or absent(up{job="audit"})
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Independent MySQL audit collector is unavailable"
+          description: "Inspect payflow-audit-collector logs; verify the HMAC chain before restart."
+      - alert: AuditCollectorStale
+        expr: time() - payflow_audit_last_event_timestamp_seconds > 120
+        for: 30s
+        labels: {severity: critical}
+        annotations:
+          summary: "No MySQL audit events collected for over two minutes"
+          description: "Check the RAM log buffer, collector cursor and MySQL general_log settings."
+      - alert: AuditBufferAlmostFull
+        expr: payflow_audit_buffer_bytes > 52428800
+        for: 30s
+        labels: {severity: warning}
+        annotations:
+          summary: "MySQL audit RAM buffer exceeds 50 MB"
+          description: "Check rotation acknowledgement; do not delete an unread rotated log."

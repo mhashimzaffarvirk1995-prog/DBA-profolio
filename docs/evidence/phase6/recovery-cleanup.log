@@ -1,0 +1,3 @@
+PASS: ops has no root credential; recovery scratch, marker and RAM staging clean
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vdb1        59G   33G   24G  59% /backups

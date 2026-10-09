@@ -34,7 +34,7 @@ env:  ## Create .env, or add missing keys, with random passwords
 network:  ## Create the Docker network shared by the stacks
 	@docker network inspect payflow-shared >/dev/null 2>&1 || docker network create payflow-shared >/dev/null
 
-up: env network  ## Start MySQL and wait until it is healthy
+up: env network security-tls  ## Start MySQL and wait until it is healthy
 	@mkdir -p data/generated
 	$(COMPOSE) up -d --wait mysql
 
@@ -99,7 +99,7 @@ workload:  ## Time the reporting queries the tuning phase will optimise
 data/generated-small/customers.csv:
 	$(MAKE) generate-small
 
-repl-up: env network data/generated-small/customers.csv  ## Start primary + 2 replicas
+repl-up: env network security-tls data/generated-small/customers.csv  ## Start primary + 2 replicas
 	$(REPL) up -d --wait
 
 repl-setup:  ## Load the primary, clone the replicas, start GTID replication
@@ -144,8 +144,10 @@ ops-setup:  ## Create the backup account and ops.backup_history on $(DB)'s serve
 	@sed "s|__BACKUP_PASSWORD__|$$(grep '^BACKUP_PASSWORD=' .env | cut -d= -f2)|" backup/setup.sql | $(MYSQL)
 	@echo "backup account and ops.backup_history ready"
 
-ops-up: env network  ## Start the ops container (cron backups) and binlog archiver
-	$(COMPOSE) --profile ops up -d --build ops binlog-archiver
+ops-up: env network security-tls  ## Start the ops container (cron backups) and binlog archiver
+	$(COMPOSE) --profile ops up -d --build ops audit-collector
+	$(COMPOSE) exec -T ops bash -c 'umask 077; source /ops/crypto.sh; init_crypto'
+	$(COMPOSE) --profile ops up -d binlog-archiver
 
 backup-full:  ## Run the nightly XtraBackup job now
 	$(COMPOSE) exec -T ops /ops/full-backup.sh
@@ -160,7 +162,7 @@ backup-status:  ## Backup history (evidence trail) and archived binlogs
 	@echo "SELECT run_id, job, status, started_at, duration_s AS secs, ROUND(bytes/1048576) AS mb, location FROM ops.backup_history ORDER BY run_id DESC LIMIT 15" | $(MYSQL) --table
 	@$(COMPOSE) exec -T ops sh -c 'echo "archived binlogs:"; ls -l /backups/binlogs | tail -n +2 | awk "{print \"  \" \$$9, \$$5}"'
 
-pitr-drill:  ## DR drill: drop a table, restore it to the moment before, measure RTO/RPO
+pitr-drill:  ## Recover an encrypted disposable ops probe; measure RTO/RPO
 	backup/pitr-drill.sh
 
 # --- Phase 4: performance tuning ---------------------------------------------------
@@ -177,17 +179,18 @@ tuning-apply:  ## Add the Phase 4 indexes online (ALGORITHM=INPLACE, LOCK=NONE)
 	$(MYSQL) $(DB) -vvv < tuning/01_indexes.sql | grep -E "^Query OK|rror"
 
 capacity:  ## Growth trend and 12/24-month disk and memory projection
+	@echo "ANALYZE TABLE payflow.transactions, payflow.ledger_entries" | $(MYSQL)
 	.venv/bin/python tuning/capacity.py
 
 # --- Phase 5: monitoring ------------------------------------------------------------
 MONITORING := docker compose --env-file .env -f monitoring/docker-compose.yml
 EXPORTER_SQL = sed "s|__EXPORTER_PASSWORD__|$$(grep '^EXPORTER_PASSWORD=' .env | cut -d= -f2)|" monitoring/setup.sql
 
-monitoring-up: env network  ## Start Prometheus, Grafana (:3000), Alertmanager, exporters
+monitoring-up: env network security-tls  ## Start Prometheus, Grafana (:3000), Alertmanager, exporters
 	$(MONITORING) up -d
 
 monitoring-setup:  ## Create the exporter account on every running server
-	@if docker ps --format '{{.Names}}' | grep -qx payflow-mysql; then $(EXPORTER_SQL) | $(MYSQL) && echo "exporter account: standalone"; fi
+	@if docker ps --format '{{.Names}}' | grep -qx payflow-mysql; then $(EXPORTER_SQL) | $(MYSQL) && $(MYSQL) < security/exporter-scope.sql && echo "exporter account: standalone (scoped, TLS required)"; fi
 	@for s in primary replica1 replica2; do \
 	    docker ps --format '{{.Names}}' | grep -qx payflow-$$s || continue; \
 	    ro=$$($(REPL) exec -T $$s sh -c 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysql -uroot -N -e "SELECT @@super_read_only"' 2>/dev/null); \
@@ -201,3 +204,26 @@ monitoring-down:  ## Stop the monitoring stack (data kept)
 
 alerts:  ## Alert notifications received so far
 	@$(MONITORING) exec -T alert-log cat /log/alerts.log 2>/dev/null || echo "no alerts yet"
+
+# --- Phase 6: security ---------------------------------------------------------
+.PHONY: security-setup security-verify access-review encryption-drill security-tls security-encrypt security-controls security-crypto-test security-audit-verify
+security-setup: env  ## Create least-privilege accounts and persist TLS enforcement
+	python3 security/manage.py harden
+	python3 security/manage.py setup
+security-verify:  ## Verify allowed access, denied privileges and plaintext rejection
+	python3 security/manage.py verify
+access-review:  ## Generate this UTC month's access and backup evidence
+	python3 security/manage.py report
+encryption-drill:  ## Isolated encrypted MySQL lab; recreate server and verify key persistence
+	bash security/encryption-drill.sh
+
+security-tls:  ## Generate or check the lab CA and SAN server certificates
+	bash security/create-tls.sh
+security-encrypt:  ## Encrypt existing tables (maintenance window; MySQL COPY rebuild)
+	python3 security/manage.py encrypt
+security-controls:  ## Test real definer API, identity verification and audit chain
+	python3 security/verify-controls.py
+security-crypto-test:  ## Reject tampered, truncated and wrong-key backup ciphertext
+	$(COMPOSE) exec -T ops bash /ops/verify-crypto.sh
+security-audit-verify:  ## Verify authenticated independent audit history
+	$(COMPOSE) exec -T audit-collector python /app/audit_collector.py verify

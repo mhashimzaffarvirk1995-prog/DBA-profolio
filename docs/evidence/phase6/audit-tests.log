@@ -1,0 +1,16 @@
+PASS: raw RAM log rotated only after independent collector acknowledgement
+PASS: SELECT, DDL, CALL and refused login recorded without SQL text or PII
+PASS: forged audit event rejected by HMAC chain verification
+PASS: incorrect audit verification key rejected
+PASS: 16606 live audit events authenticated; checkpoint d21270b357a5a169ec7b484cd2fa5078132b749c729b1b61228d6eed3b7a6693
+payflow_audit_events_total 16606
+payflow_audit_last_event_timestamp_seconds 1791535976.7306852
+payflow_audit_buffer_bytes 457
+Checking /etc/prometheus/prometheus.yml
+  SUCCESS: 1 rule files found
+ SUCCESS: /etc/prometheus/prometheus.yml is valid prometheus config file syntax
+
+Checking /etc/prometheus/alerts.yml
+  SUCCESS: 13 rules found
+
+mysql_up 1

@@ -1,0 +1,17 @@
+Synthetic incident: DROP ops.phase6_pitr_probe (d591fa87-be39-11f1-aee6-e647bb577b8a:355704)
+Encrypted archive contains the closed incident binlog
+ Container payflow-recovery Starting 
+ Container payflow-recovery Started 
+ Container payflow-recovery Waiting 
+ Container payflow-recovery Healthy 
+PASS: recovered both pre-backup and post-backup rows; checksum matches
+Component_name	component_keyring_file
+Author	Oracle Corporation
+License	GPL
+Implementation_name	component_keyring_file
+Version	1.0
+Component_status	Active
+Data_file	/restore-keyring/keys
+Read_only	No
+0
+PASS: encrypted full backup + independently recovered keyring + encrypted binlog replay; RPO=0, drill=124s

@@ -2,7 +2,7 @@
 # ops container: save the environment for cron jobs, install the schedule,
 # run crond in the foreground.
 set -euo pipefail
-env | grep -E '^(DB_HOST|BACKUP_PASSWORD|MYSQL_ROOT_PASSWORD|PUSHGATEWAY_URL|KEEP_[A-Z]+)=' \
+env | grep -E '^(DB_HOST|BACKUP_PASSWORD|PUSHGATEWAY_URL|KEEP_[A-Z]+)=' \
     | sed 's/^/export /; s/=\(.*\)$/="\1"/' > /etc/ops.env
 chmod 600 /etc/ops.env
 mkdir -p /backups/full /backups/logical /backups/binlogs

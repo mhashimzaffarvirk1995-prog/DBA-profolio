@@ -2,6 +2,20 @@
 
 Backups only count if they can be restored, quickly, to the right moment. This phase runs three kinds of backup against the 10M-transaction production server, verifies them automatically, and rehearses the incident every DBA dreads: a table dropped during business hours.
 
+## Current encrypted pipeline (Phase 6)
+
+The current scripts use authenticated age envelopes for full/logical backups and
+archived binlogs, verified TLS, and independent encrypted key escrow. The latest
+full was 9.1 GiB in 345 s; restore verification took 137 s; encrypted PITR passed
+in 124 s with RPO 0. The logical dump wrote 35,219,646 rows in 88 s including
+sealing. See [Phase 6](06-security-compliance.md) for current recovery instructions
+and [runbooks](runbooks.md#how-to-restore) before restoring an encrypted backup.
+
+## Phase 3 baseline measurements
+
+These measurements and the business-table drill below predate encryption. They
+remain historical evidence and are not timings for the current encrypted pipeline.
+
 | What | Tool | When | Result on 10M transactions |
 |---|---|---|---|
 | Full physical backup | Percona XtraBackup 8.4 (hot, prepared immediately) | nightly 01:00 UTC | **7.4 GB in 29 s**, no downtime |
@@ -12,11 +26,11 @@ Backups only count if they can be restored, quickly, to the right moment. This p
 
 ```mermaid
 flowchart LR
-  P[(production<br/>mysql)] -- "XtraBackup (hot)" --> F[/full backups<br/>keep 2/]
-  P -- "MySQL Shell dump" --> L[/logical dumps<br/>keep 3/]
-  P -- "binlog stream" --> B[/binlog archive/]
+  P[(production<br/>mysql)] -- "XtraBackup (hot)" --> F[/encrypted full backups<br/>keep 1/]
+  P -- "MySQL Shell dump" --> L[/encrypted logical dumps<br/>keep 2/]
+  P -- "binlog stream" --> B[/encrypted binlog archive/]
   F -- "nightly restore test" --> V{{verify:<br/>row counts, ledger}}
-  F -- "copy-back" --> R[(recovery<br/>server)]
+  F -- "authenticate, recover keys,<br/>decrypt and move-back" --> R[(recovery<br/>server)]
   B -- "replay up to<br/>the bad GTID" --> R
   R -- "mysqldump one table" --> P
   F & L & V -. "evidence" .-> H[(ops.backup_history)]
@@ -30,13 +44,13 @@ make backup-full            # the nightly jobs, on demand
 make backup-logical
 make backup-verify
 make backup-status          # evidence trail and archived binlogs
-make pitr-drill             # the drill below
+make pitr-drill             # current encrypted drill; drops only a disposable ops probe
 ```
 
 Two containers sit beside the server. Both are built from [docker/ops/Dockerfile](../docker/ops/Dockerfile), which adds XtraBackup, MySQL Shell, Percona Toolkit and `mysqlbinlog` to the MySQL 8.4 image:
 
 - **ops** runs `crond` with [the schedule](../backup/crontab) and has the server's data volume mounted read-only for XtraBackup.
-- **binlog-archiver** runs [binlog-archiver.sh](../backup/binlog-archiver.sh). It connects like a replica, writes every binlog to the backup volume as it's produced, and reconnects on its own after restarts.
+- **binlog-archiver** runs [binlog-archiver.sh](../backup/binlog-archiver.sh). It connects like a replica, receives plaintext into bounded RAM and atomically publishes encrypted binlog snapshots to the backup volume, and reconnects on its own after restarts.
 
 Every job writes a row to **`ops.backup_history`**: job, status, start and end time, size, location, and JSON details such as the binlog coordinates of each full backup. When the monitoring stack is up, each job also pushes success and failure metrics to Prometheus (Phase 5). That table is the evidence auditors ask for, and the compliance report in Phase 6 is generated from it.
 
@@ -45,16 +59,16 @@ Every job writes a row to **`ops.backup_history`**: job, status, start and end t
 | Choice | Why |
 |---|---|
 | **XtraBackup for the nightly full** | A hot physical copy: no `mysqldump`-style hours-long rebuild of indexes on restore, and no global lock for InnoDB. Restore time is roughly copy time. |
-| **Prepare at backup time** | `--prepare` (applying the redo log) is done straight after the backup, so a restore is a plain copy. That costs disk, but it's what keeps RTO low. |
+| **Prepare at backup time** | `--prepare` (applying the redo log) is done straight after the backup, so recovery need not repeat preparation. Phase 6 authenticates/decrypts the prepared copy and recovers its keyring before move-back. |
 | **A logical dump as well** | Portable across versions and platforms, and readable. It also allows single objects to be restored, and if a physical backup is ever found corrupt, the logical one is an independent second copy. |
 | **Continuous binlog streaming, not periodic copying** | A cron job copying binlogs every 15 minutes means up to 15 minutes of loss if the server's disk dies. Streaming brings that down to the archiver's lag, which was 0.7 s measured. |
-| **A dedicated `backup` account** | It holds only `BACKUP_ADMIN`, `RELOAD`, `PROCESS`, `LOCK TABLES`, `REPLICATION CLIENT/SLAVE` and read access, plus `INSERT` on the history table. It connects with `REQUIRE SSL`, and its credentials are in an option file, never on a command line where `ps` would show them ([backup/setup.sql](../backup/setup.sql)). |
+| **A dedicated `backup` account** | It holds only `BACKUP_ADMIN`, `RELOAD`, `PROCESS`, `LOCK TABLES`, `REPLICATION CLIENT/SLAVE` and scoped schema/role metadata reads, `SHOW_ROUTINE`, plus `INSERT` on the history table. It connects with `REQUIRE SSL`, and clients verify the CA/server identity; credentials use a private option file or stdin rather than command-line arguments ([backup/setup.sql](../backup/setup.sql)). |
 | **Verify every night** | The script starts a separate `mysqld` on a restored copy and checks row counts and the double-entry invariant. Every client call there names the local socket explicitly. See *Lessons* for why. |
-| **Retention** | 2 full backups and 3 logical dumps (`KEEP_FULL`, `KEEP_LOGICAL`). Binlogs are kept 7 days on the server and archived beyond that. |
+| **Retention** | The current small-VM policy keeps 1 independently verified full backup and 2 logical dumps (`KEEP_FULL`, `KEEP_LOGICAL`); the Phase 3 baseline kept 2 and 3. Full retention runs only after successful independent restore verification. Binlogs are kept 7 days on the server and archived beyond that. |
 
 ## The drill: `DROP TABLE kyc_documents` at 13:55:55
 
-[pitr-drill.sh](../backup/pitr-drill.sh) runs the whole scenario and records it in [docs/evidence/](evidence/):
+The Phase 3 version of [pitr-drill.sh](../backup/pitr-drill.sh) ran the following scenario, recorded in [docs/evidence/](evidence/). The current version instead recovers an encrypted disposable `ops.phase6_pitr_probe` and never drops a business table:
 
 1. **App traffic:** a deposit every 200 ms runs for the whole drill.
 2. **Post-backup changes:** 5 new KYC documents are written *after* the last full backup, so they exist only in the binlogs. The table's row count and `CHECKSUM TABLE` are recorded.
@@ -96,5 +110,5 @@ Steps 4.1–4.3 together are a **full point-in-time restore of the whole instanc
 ## Not covered (yet)
 
 - **Off-site copies.** Backups currently live on the same Docker host. Production would ship them to object storage (S3 with Object Lock) or another region. Phase 8 does this with RDS snapshots.
-- **Encrypted backups.** XtraBackup `--encrypt` and an encrypted volume belong with the encryption-at-rest work in Phase 6.
+- **Encryption is now implemented.** [Phase 6](06-security-compliance.md) seals backups and archives with age and verifies independent key recovery. External key custody remains a deployment responsibility.
 - **Incremental backups.** The full backup takes 29 s, so incrementals aren't worth their extra restore steps at this size.

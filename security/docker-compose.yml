@@ -1,0 +1,31 @@
+# Isolated encryption lab: never mounts the production data volume.
+name: payflow-security
+services:
+  keyring-init:
+    image: mysql:8.4
+    user: root
+    entrypoint: ["sh", "/setup-keyring.sh"]
+    volumes:
+      - keyring:/keyring
+      - ./setup-keyring.sh:/setup-keyring.sh:ro
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?run make env}
+    depends_on:
+      keyring-init:
+        condition: service_completed_successfully
+    command: ["--innodb-buffer-pool-size=128M", "--require-secure-transport=ON", "--default-table-encryption=ON", "--innodb-redo-log-encrypt=ON", "--innodb-undo-log-encrypt=ON", "--binlog-encryption=ON"]
+    volumes:
+      - encrypted-data:/var/lib/mysql
+      - keyring:/keyring
+      - ./mysqld.my:/usr/sbin/mysqld.my:ro
+      - ./component_keyring_file.cnf:/usr/lib64/mysql/plugin/component_keyring_file.cnf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql -h127.0.0.1 --ssl-mode=REQUIRED -uroot -N -e 'SELECT 1'"]
+      interval: 2s
+      timeout: 3s
+      retries: 90
+volumes:
+  encrypted-data:
+  keyring:

@@ -32,8 +32,14 @@ GRANT SELECT ON performance_schema.log_status TO 'backup'@'%';
 GRANT SELECT ON performance_schema.keyring_component_status TO 'backup'@'%';
 GRANT SELECT ON performance_schema.replication_group_members TO 'backup'@'%';
 -- MySQL Shell dump: read every object definition and row
-GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON *.* TO 'backup'@'%';
+GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON payflow.* TO 'backup'@'%';
+GRANT SELECT, SHOW VIEW, TRIGGER, EVENT ON ops.* TO 'backup'@'%';
 -- binlog archiver: stream binary logs like a replica
 GRANT REPLICATION SLAVE ON *.* TO 'backup'@'%';
 -- evidence trail
 GRANT INSERT ON ops.backup_history TO 'backup'@'%';
+
+GRANT SHOW_ROUTINE ON *.* TO 'backup'@'%';
+-- Shell 8.4 privilege discovery reads role metadata, not password hashes.
+GRANT SELECT ON mysql.default_roles TO 'backup'@'%';
+GRANT SELECT ON mysql.role_edges TO 'backup'@'%';

@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026-10-09T08:07:17.401921+00:00",
+  "checks": [
+    {
+      "name": "currency_balance",
+      "violations": 0,
+      "seconds": 2.78
+    },
+    {
+      "name": "negative_customer_wallet",
+      "violations": 0,
+      "seconds": 0.17
+    },
+    {
+      "name": "wallet_ledger_mismatch",
+      "violations": 0,
+      "seconds": 32.67
+    },
+    {
+      "name": "unbalanced_transactions",
+      "violations": 0,
+      "seconds": 30.41
+    },
+    {
+      "name": "missing_ledger",
+      "violations": 0,
+      "seconds": 26.06
+    },
+    {
+      "name": "unrefunded_failure",
+      "violations": 0,
+      "seconds": 0.39
+    }
+  ],
+  "counts": {
+    "transactions": 10345881,
+    "ledger_entries": 23576467,
+    "customers": 200003
+  },
+  "status": "passed"
+}

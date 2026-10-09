@@ -3,3 +3,4 @@
   0  1  *   *   *    /ops/full-backup.sh    >> /backups/cron.log 2>&1
  30  2  *   *   *    /ops/logical-backup.sh >> /backups/cron.log 2>&1
   0  4  *   *   *    /ops/verify-backup.sh  >> /backups/cron.log 2>&1
+*/5 *  *   *   *    /ops/rotate-audit.sh >> /backups/cron.log 2>&1

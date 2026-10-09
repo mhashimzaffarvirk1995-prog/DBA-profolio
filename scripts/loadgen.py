@@ -139,7 +139,8 @@ class Stats:
 
 def connect(args):
     return mysql.connector.connect(host=args.host, port=args.port, user=args.user, password=args.password,
-                                   database="payflow", autocommit=True)
+                                   database="payflow", autocommit=True, ssl_ca=os.path.join(ROOT, ".private/tls/ca.pem"),
+                                   ssl_verify_cert=True, ssl_verify_identity=True)
 
 
 def timed(stats, op, fn):
@@ -231,8 +232,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=3306)
-    p.add_argument("--user", default="root")
-    p.add_argument("--password", default=env.get("MYSQL_ROOT_PASSWORD", ""))
+    p.add_argument("--user", default="payflow_bench" if os.path.exists(os.path.join(ROOT, ".private/security-enabled")) else "root")
+    p.add_argument("--password", default=env.get("BENCH_PASSWORD" if os.path.exists(os.path.join(ROOT, ".private/security-enabled")) else "MYSQL_ROOT_PASSWORD", ""))
     p.add_argument("--duration", type=int, default=180)
     p.add_argument("--app", type=int, default=8)
     p.add_argument("--screens", type=int, default=4)

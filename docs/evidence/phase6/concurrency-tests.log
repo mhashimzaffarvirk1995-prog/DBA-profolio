@@ -1,0 +1,7 @@
+sp_transfer_funds (ordered locks): 4 threads x 20 transfers over 8 wallets
+  80 calls in 0.8s (95/s), p50 28.6 ms, p95 190.5 ms
+  committed 80  insufficient funds 0  deadlocks 0  lock timeouts 0  other 0
+  PASS  money conserved: 8000.0000 == 8000.00
+  PASS  no negative wallet (min 794.6700)
+  PASS  wallet balances match ledger (0 mismatched)
+  PASS  every currency nets to zero (0 unbalanced)

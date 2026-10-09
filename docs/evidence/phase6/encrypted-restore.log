@@ -1,0 +1,5 @@
+2026-10-09T08:00:28Z [verify] restoring /backups/full/20261009T074115Z into /backups/verify
+2026-10-09T08:02:32Z [verify] starting a private mysqld on the restored copy
+2026-10-09T08:02:45Z [verify] retention: removing /backups/full/20261009T013208Z/
+2026-10-09T08:02:45Z [verify] retention: removing /backups/full/20261009T073441Z/
+2026-10-09T08:02:45Z [verify] success in 137s, 0 at /backups/full/20261009T074115Z

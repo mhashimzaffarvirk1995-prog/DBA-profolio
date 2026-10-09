@@ -29,12 +29,12 @@ AS_OF = "2026-09-30"
 
 def main():
     env = read_env()
-    conn = mysql.connector.connect(host="127.0.0.1", port=3306, user="root",
-                                   password=env.get("MYSQL_ROOT_PASSWORD", ""), database="payflow")
+    conn = mysql.connector.connect(host="127.0.0.1", port=3306, user="payflow_bench" if os.path.exists(os.path.join(ROOT, ".private/security-enabled")) else "root",
+                                   password=env.get("BENCH_PASSWORD" if os.path.exists(os.path.join(ROOT, ".private/security-enabled")) else "MYSQL_ROOT_PASSWORD", ""), database="payflow",
+                                   ssl_ca=os.path.join(ROOT, ".private/tls/ca.pem"), ssl_verify_cert=True, ssl_verify_identity=True)
     cur = conn.cursor()
 
-    cur.execute("ANALYZE TABLE transactions, ledger_entries")
-    cur.fetchall()
+    # make capacity refreshes statistics through the local administrator socket.
     cur.execute("""SELECT table_name, table_rows, data_length + index_length
                      FROM information_schema.tables WHERE table_schema = 'payflow'""")
     tables = {name: (rows, size) for name, rows, size in cur.fetchall()}

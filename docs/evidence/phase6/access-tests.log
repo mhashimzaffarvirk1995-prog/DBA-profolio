@@ -1,0 +1,18 @@
+PASS: app cannot read PII
+PASS: app cannot mutate wallets
+PASS: app cannot call ledger helper
+PASS: report cannot read PII
+PASS: report cannot write
+PASS: auditor cannot alter audit
+PASS: report view readable
+PASS: audit readable
+PASS: public API executable
+PASS: plaintext TCP rejected
+Variable_name	Value
+Ssl_cipher	TLS_AES_128_GCM_SHA256
+@@require_secure_transport
+1
+
+PASS: remote root account locked
+PASS: scoped definer cannot log in
+PASS: public clients verify server identity against the lab CA

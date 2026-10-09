@@ -1,0 +1,16 @@
+PASS: logical encrypted inventory authenticated; no plaintext dump files persisted; RAM staging empty
+Writing DDL - done
+Writing table metadata - done
+Starting data dump
+Dumping data - done
+Dump duration: 00:00:42s
+Total duration: 00:00:42s
+Schemas dumped: 2
+Tables dumped: 13
+Uncompressed data size: 3.96 GB
+Compressed data size: 1.06 GB
+Compression ratio: 3.7
+Rows written: 35219646
+Bytes written: 1.06 GB
+Average uncompressed throughput: 93.50 MB/s
+Average compressed throughput: 25.08 MB/s

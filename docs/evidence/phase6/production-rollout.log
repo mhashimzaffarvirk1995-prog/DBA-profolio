@@ -1,0 +1,89 @@
+ Container payflow-ops Stopping 
+ Container payflow-binlog-archiver Stopping 
+ Container payflow-ops Stopped 
+ Container payflow-binlog-archiver Stopped 
+ Volume payflow_restore-keyring Creating 
+ Volume payflow_backup-identity Creating 
+ Volume payflow_key-escrow Creating 
+ Volume payflow_audit-events Creating 
+ Volume payflow_mysql-keyring Creating 
+ Volume payflow_backup-public Creating 
+ Volume payflow_backup-identity Creating 
+ Volume payflow_audit-events Creating 
+ Volume payflow_mysql-keyring Creating 
+ Volume payflow_backup-public Creating 
+ Volume payflow_restore-keyring Creating 
+ Volume payflow_key-escrow Creating 
+ Volume payflow_audit-buffer Creating 
+ Volume payflow_audit-buffer Creating 
+ Volume payflow_backup-identity Created 
+ Volume payflow_backup-identity Created 
+ Volume payflow_backup-public Created 
+ Volume payflow_backup-public Created 
+ Volume payflow_key-escrow Created 
+ Volume payflow_key-escrow Created 
+ Volume payflow_restore-keyring Created 
+ Volume payflow_restore-keyring Created 
+ Volume payflow_audit-buffer Created 
+ Volume payflow_audit-buffer Created 
+ Volume payflow_mysql-keyring Created 
+ Volume payflow_mysql-keyring Created 
+ Volume payflow_audit-events Created 
+ Volume payflow_audit-events Created 
+ Container payflow-ops-run-263b8dcf277c Creating 
+ Container payflow-ops-run-263b8dcf277c Created 
+v1.3.1
+ Volume payflow_mysql-tls Creating 
+ Volume payflow_mysql-tls Creating 
+ Volume payflow_mysql-tls Created 
+ Volume payflow_mysql-tls Created 
+ Container payflow-security-init-1 Creating 
+ Container payflow-security-init-1 Created 
+ Container payflow-mysql Recreate 
+ Container payflow-mysql Recreated 
+ Container payflow-security-init-1 Starting 
+ Container payflow-security-init-1 Started 
+ Container payflow-security-init-1 Waiting 
+ Container payflow-security-init-1 Exited 
+ Container payflow-mysql Starting 
+ Container payflow-mysql Started 
+ Container payflow-mysql Waiting 
+ Container payflow-security-init-1 Waiting 
+ Container payflow-security-init-1 Exited 
+ Container payflow-mysql Healthy 
+ Container payflow-audit-collector Creating 
+ Container payflow-ops Recreate 
+ Container payflow-audit-collector Created 
+ Container payflow-ops Recreated 
+ Container payflow-ops Starting 
+ Container payflow-audit-collector Starting 
+ Container payflow-ops Started 
+ Container payflow-audit-collector Started 
+Locked scoped owner installed for routines/triggers; remote root locked
+Roles, accounts, reporting view and persistent TLS requirement applied
+ENCRYPTED: payflow.audit_log
+ENCRYPTED: payflow_test.wallets
+ENCRYPTED: payflow_test.remittance_fees
+ENCRYPTED: payflow_test.kyc_documents
+ENCRYPTED: payflow_test.exchange_rates
+ENCRYPTED: payflow_test.customers
+ENCRYPTED: payflow_test.currencies
+ENCRYPTED: payflow_test.countries
+ENCRYPTED: payflow_test.beneficiaries
+ENCRYPTED: payflow_test.audit_log
+ENCRYPTED: payflow.remittance_fees
+ENCRYPTED: payflow.currencies
+ENCRYPTED: payflow.countries
+ENCRYPTED: ops.backup_history
+ENCRYPTED: payflow.exchange_rates
+ENCRYPTED: payflow_test.ledger_entries
+ENCRYPTED: payflow_test.transactions
+ENCRYPTED: payflow.wallets
+ENCRYPTED: payflow.customers
+ENCRYPTED: payflow.beneficiaries
+ENCRYPTED: payflow.kyc_documents
+ENCRYPTED: payflow.transactions
+ENCRYPTED: payflow.ledger_entries
+All application/ops tables and mysql system tablespace encrypted
+2026-10-09T07:34:41Z [full] xtrabackup --backup -> /backups/full/20261009T073441Z
+2026-10-09T07:34:41Z [full] failed in 0s, 0 at /backups/full/20261009T073441Z

@@ -116,7 +116,22 @@ From [tuning/capacity.py](../tuning/capacity.py) ([output](evidence/phase4/capac
 | +12 months | 854k | 15.4 GB | 2.0 GB → 3 GB pool |
 | +24 months | 1.1M | 24.8 GB | 2.6 GB → 4 GB pool |
 
-Binlogs (7 days), two full backups, three dumps and the binlog archive come on top, so the data and backup volumes should be budgeted at roughly **3× the database size**: about 75 GB at 24 months. Revisit the pool size when the 90-day working set passes ~70 % of it, which the monitoring in Phase 5 makes visible as the buffer pool hit rate.
+The original capacity model included binlogs (7 days), two full backups, three dumps and the binlog archive on top, so the data and backup volumes should be budgeted at roughly **3× the database size**: about 75 GB at 24 months. Revisit the pool size when the 90-day working set passes ~70 % of it, which the monitoring in Phase 5 makes visible as the buffer pool hit rate.
+
+## Current operating settings
+
+The tables above describe the measured Phase 4 tuning run. The current 3.8 GB
+Docker VM uses a persisted 768 MB buffer pool to leave room for monitoring, RAM
+staging and independent recovery; the dedicated-host configuration remains 2 GB.
+Current retention is one verified encrypted full and two encrypted logical dumps.
+Recalculate disk headroom for encrypted staging and recovery rather than treating
+the historical 3× estimate as a hard limit.
+
+After Phase 6 setup, host load/concurrency/capacity clients use `payflow_bench`
+with the private lab CA and server identity verification. Direct test writes are
+limited to `payflow_test`; statistics refresh runs through the local administrator
+socket in `make capacity`. Slow logging is normally off. Protect and retire any
+new raw slow logs after a tuning run as described in [Phase 6](06-security-compliance.md).
 
 ## Reproduce
 

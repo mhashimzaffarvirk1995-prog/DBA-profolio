@@ -1,0 +1,4 @@
+PASS: authenticated backup round trip
+PASS: wrong recovery identity rejected
+PASS: tampered backup rejected
+PASS: truncated backup rejected

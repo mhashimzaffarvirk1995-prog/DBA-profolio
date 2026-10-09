@@ -1,0 +1,2 @@
+# Captured CLI evidence preserves trailing tabs and spaces from the original output.
+docs/evidence/** -whitespace

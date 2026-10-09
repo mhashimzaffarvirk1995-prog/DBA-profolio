@@ -12,17 +12,34 @@ x-ops: &ops
   image: payflow-ops:8.4
   pull_policy: never                 # built locally by the ops service
   environment: &ops-env
+    KEEP_FULL: "1"                  # 4 GB VM / 60 GB disk; keep latest validated full
+    KEEP_LOGICAL: "2"
     DB_HOST: mysql                   # not MYSQL_HOST: mysql clients read that implicitly
     BACKUP_PASSWORD: ${BACKUP_PASSWORD:?set BACKUP_PASSWORD in .env (make env)}
-    MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
   networks: [default, shared]
 
 services:
+  security-init:
+    image: mysql:8.4
+    user: root
+    entrypoint: ["sh", "-c", "sh /setup-keyring.sh && cp /tls-source/* /tls/ && chown -R mysql:mysql /tls && chmod 700 /tls && chmod 600 /tls/server-key.pem && touch /run/audit/mysql.log && chown mysql:mysql /run/audit/mysql.log && chmod 600 /run/audit/mysql.log && cp /live-keyring.cnf /mysql-data/component_keyring_file.cnf && chown mysql:mysql /mysql-data/component_keyring_file.cnf"]
+    volumes:
+      - mysql-keyring:/keyring
+      - mysql-tls:/tls
+      - audit-buffer:/run/audit
+      - ../../.private/tls/server:/tls-source:ro
+      - ../../security/setup-keyring.sh:/setup-keyring.sh:ro
+      - mysql-data:/mysql-data
+      - ../../security/component_keyring_file.cnf:/live-keyring.cnf:ro
+
   mysql:
     image: mysql:8.4
     container_name: payflow-mysql
     hostname: mysql
+    depends_on:
+      security-init:
+        condition: service_completed_successfully
     # Restart after a crash. Added after the 2026-10-06 OOM kill left
     # production down until someone noticed (docs/incidents/2026-10-06-oom.md).
     restart: unless-stopped
@@ -33,6 +50,11 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./my.cnf:/etc/mysql/conf.d/payflow.cnf:ro
+      - mysql-keyring:/keyring
+      - mysql-tls:/tls:ro
+      - audit-buffer:/run/audit
+      - ../../security/mysqld.my:/usr/sbin/mysqld.my:ro
+      - ../../security/component_keyring_file.cnf:/usr/lib64/mysql/plugin/component_keyring_file.cnf:ro
       # CSVs for the bulk load, read by the client (LOAD DATA LOCAL). Not mounted
       # at secure_file_priv: the image's entrypoint chowns that directory and
       # fails on a read-only mount.
@@ -41,7 +63,7 @@ services:
     cap_add:
       - SYS_NICE                       # silences "mbind: Operation not permitted"
     healthcheck:
-      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql --protocol=SOCKET -uroot -N -e 'SELECT 1'"]
       interval: 5s
       timeout: 5s
       retries: 60
@@ -52,22 +74,54 @@ services:
     container_name: payflow-ops
     profiles: [ops]
     entrypoint: ["/ops/entrypoint.sh"]
+    tmpfs: ["/run/pitr:size=128m,mode=0700", "/run/logical:size=1536m,mode=0700"]
     restart: unless-stopped
     volumes:
       - mysql-data:/var/lib/mysql:ro   # XtraBackup copies the data files directly
       - backups:/backups
       - recovery-data:/recovery        # restore target for the PITR drill
+      - mysql-keyring:/keyring:ro
+      - backup-identity:/backup-identity
+      - backup-public:/backup-public
+      - key-escrow:/key-escrow
+      - restore-keyring:/restore-keyring
+      - audit-buffer:/run/audit
+      - audit-events:/audit-events:ro
+      - ../../security/ops-mysqld.my:/usr/sbin/mysqld.my:ro
+      - ../../security/ops-component_keyring_file.cnf:/usr/lib64/mysql/plugin/component_keyring_file.cnf:ro
       - ../../backup:/ops:ro
+      - ../../.private/tls/ca.pem:/tls/ca.pem:ro
 
   binlog-archiver:
     <<: *ops
     container_name: payflow-binlog-archiver
     profiles: [ops]
     entrypoint: ["/ops/binlog-archiver.sh"]
+    tmpfs: ["/run/binlogs:size=128m,mode=0700"]
     restart: unless-stopped
     volumes:
       - backups:/backups
       - ../../backup:/ops:ro
+      - ../../.private/tls/ca.pem:/tls/ca.pem:ro
+      - backup-public:/backup-public:ro
+
+  audit-collector:
+    image: python:3.12-alpine
+    container_name: payflow-audit-collector
+    command: ["python", "-u", "/app/audit_collector.py", "collect"]
+    networks: [default, shared]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9105/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    environment:
+      AUDIT_HMAC_KEY: ${AUDIT_HMAC_KEY:?run make env}
+    volumes:
+      - ../../security:/app:ro
+      - audit-buffer:/run/audit:ro
+      - audit-events:/audit-events
+    restart: unless-stopped
 
   # Started only by backup/pitr-drill.sh, on a copy restored into recovery-data.
   recovery:
@@ -77,13 +131,20 @@ services:
     profiles: [recovery]
     command: ["--server-id=99", "--skip-log-bin", "--skip-replica-start",
               "--gtid-mode=ON", "--enforce-gtid-consistency=ON",
-              "--innodb-buffer-pool-size=512M"]
+              "--innodb-buffer-pool-size=256M", "--innodb-redo-log-encrypt=ON",
+              "--innodb-undo-log-encrypt=ON", "--ssl-ca=/tls/ca.pem",
+              "--ssl-cert=/tls/server-cert.pem", "--ssl-key=/tls/server-key.pem",
+              "--require-secure-transport=ON"]
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     volumes:
       - recovery-data:/var/lib/mysql
+      - restore-keyring:/restore-keyring
+      - mysql-tls:/tls:ro
+      - ../../security/ops-mysqld.my:/usr/sbin/mysqld.my:ro
+      - ../../security/ops-component_keyring_file.cnf:/usr/lib64/mysql/plugin/component_keyring_file.cnf:ro
     healthcheck:
-      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql --protocol=SOCKET -uroot -N -e 'SELECT 1'"]
       interval: 3s
       timeout: 5s
       retries: 200
@@ -92,6 +153,19 @@ volumes:
   mysql-data:
   backups:
   recovery-data:
+  mysql-keyring:
+  mysql-tls:
+  backup-identity:
+  backup-public:
+  key-escrow:
+  restore-keyring:
+  audit-events:
+  audit-buffer:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=64m,uid=999,gid=999,mode=0700
 
 networks:
   # Created by `make network`; shared with the monitoring stack (Phase 5).

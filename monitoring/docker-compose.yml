@@ -22,13 +22,15 @@ services:
     command:
       - |
         umask 077
-        printf '[client]\nuser=exporter\npassword=%s\n' "$$EXPORTER_PASSWORD" > /tmp/.my.cnf
+        printf '[client]\nuser=exporter\npassword=%s\ntls=skip-verify\n\n[client.production]\nuser=exporter\npassword=%s\nssl-ca=/tls/ca.pem\ntls-server-name=mysql\n' "$$EXPORTER_PASSWORD" "$$EXPORTER_PASSWORD" > /tmp/.my.cnf
         exec /bin/mysqld_exporter --config.my-cnf=/tmp/.my.cnf \
           --collect.info_schema.innodb_metrics \
           --collect.info_schema.processlist \
           --collect.info_schema.tables \
           --collect.binlog_size \
           --collect.engine_innodb_status
+    volumes:
+      - ../.private/tls/ca.pem:/tls/ca.pem:ro
     environment:
       EXPORTER_PASSWORD: ${EXPORTER_PASSWORD:?set EXPORTER_PASSWORD in .env (make env)}
     networks: [default, shared]

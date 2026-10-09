@@ -1,0 +1,4 @@
+PASS: 16522 audit events authenticated; checkpoint 256bd273de4088258050f97393b29ea71198538aecf7f8ed2b983515d8d040e1
+PASS: real deposit works with locked definer; retry posts exactly once
+PASS: wrong server hostname rejected by VERIFY_IDENTITY
+PASS: independent audit chain authentication

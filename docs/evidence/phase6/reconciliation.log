@@ -1,0 +1,6 @@
+PASS: currency_balance
+PASS: negative_customer_wallet
+PASS: wallet_ledger_mismatch
+PASS: unbalanced_transactions
+PASS: missing_ledger
+PASS: unrefunded_failure

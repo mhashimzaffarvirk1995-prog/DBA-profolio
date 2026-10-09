@@ -22,6 +22,7 @@ Open Grafana at http://localhost:3000, Prometheus at http://localhost:9090, and 
 - Replication thread state and lag above 30 seconds for one minute.
 - Failed backup jobs and full/verify success older than 26 hours.
 - Connections above 80%, buffer pool hit rate below 99%, low host disk space and slow query rate.
+- Phase 6 independent audit collector availability, ingestion freshness and RAM-buffer growth.
 
 The [rules](../monitoring/prometheus/alerts.yml) link to operational [runbooks](runbooks.md). Critical alerts route immediately after evaluation; warnings wait ten seconds for grouping. Alertmanager suppresses replication notifications when the same server is down. `make alerts` displays received webhook notifications.
 
@@ -40,13 +41,22 @@ The final [production drill](evidence/phase5/production-drill-final.log) complet
 
 The earlier production run recorded timings but ended with a trailing parse error because the script was edited during execution. It is retained as historical evidence; the final run above supersedes it.
 
-Docker Compose validation, `promtool check config` (10 rules), `amtool check-config`, shell syntax and dashboard JSON checks passed. Grafana's dashboard was inspected with live server, traffic, connection, buffer-pool and backup panels. [Stack health](evidence/phase5/stack-health.json) records Grafana health and scrape success. A healthy exporter scrape is distinct from `mysql_up`: deliberately stopped lab servers still scrape successfully with `mysql_up = 0`.
+Docker Compose validation, `promtool check config` (10 rules at Phase 5 completion), `amtool check-config`, shell syntax and dashboard JSON checks passed. Grafana's dashboard was inspected with live server, traffic, connection, buffer-pool and backup panels. [Stack health](evidence/phase5/stack-health.json) records Grafana health and scrape success. A healthy exporter scrape is distinct from `mysql_up`: deliberately stopped lab servers still scrape successfully with `mysql_up = 0`.
 
 ### Small-VM settings
 
 The current 3.8 GB VM uses a persisted **768 MB** standalone buffer pool. The Phase 4 configuration remains 2 GB for a larger dedicated host; restore it with `SET PERSIST innodb_buffer_pool_size = 2147483648` only after increasing memory headroom. Grafana has a **512 MB** container limit and `GOMEMLIMIT=384MiB`.
 
 The full-backup job now checks for free space equal to the data directory size plus 20% before starting. This conservative guard was added after a drill filled the shared Docker disk. Incomplete drill output and the unused restore-test copy were removed with approval; a successful full backup was then produced. Explicit backup credential overrides are respected so the wrong-password drill produces an actual authentication failure.
+
+## Phase 6 integration
+
+The current configuration validates **13 alert rules**, including
+`AuditCollectorDown`, `AuditCollectorStale` and `AuditBufferAlmostFull`. The
+standalone exporter uses the restricted account and `client.production` module
+with the trusted lab CA and `tls-server-name=mysql`. Replication lab settings
+remain unchanged. [Audit/monitoring evidence](evidence/phase6/audit-tests.log)
+records successful config/rule validation and `mysql_up 1` after hardening.
 
 ## Limitations
 

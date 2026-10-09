@@ -16,7 +16,7 @@ fi
 # Credentials go in an option file, never on a command line (visible in ps).
 CNF="$HOME/.backup.cnf"
 umask 077
-printf '[client]\nhost=%s\nuser=%s\npassword=%s\nssl-mode=REQUIRED\n' \
+printf '[client]\nhost=%s\nuser=%s\npassword=%s\nssl-mode=VERIFY_IDENTITY\nssl-ca=/tls/ca.pem\n' \
     "$DB_HOST" "$BACKUP_USER" "$BACKUP_PASSWORD" > "$CNF"
 
 START=$(date +%s)
