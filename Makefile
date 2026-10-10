@@ -227,3 +227,16 @@ security-crypto-test:  ## Reject tampered, truncated and wrong-key backup cipher
 	$(COMPOSE) exec -T ops bash /ops/verify-crypto.sh
 security-audit-verify:  ## Verify authenticated independent audit history
 	$(COMPOSE) exec -T audit-collector python /app/audit_collector.py verify
+
+# --- Phase 7: PostgreSQL -> MySQL migration (isolated, synthetic lab) -----------
+MIGRATION := docker compose --env-file .env -f migration/docker-compose.yml
+.PHONY: migration-drill migration-up migration-verify migration-down
+migration-drill: env  ## Rebuild isolated legacy fixtures; migrate, validate, cut over and roll back
+	bash migration/run.sh
+migration-up: env  ## Start retained migration databases for inspection
+	bash migration/tls.sh
+	$(MIGRATION) up -d --wait postgres mysql
+migration-verify:  ## Check final migrated state, identity/constraint failures and preserved payment
+	$(MIGRATION) run --rm --no-deps --entrypoint python runner -u migration/verify.py
+migration-down:  ## Stop migration lab; retain isolated volumes and evidence
+	$(MIGRATION) stop mysql postgres

@@ -118,3 +118,22 @@ collector with `docker compose --env-file .env -f docker/standalone/docker-compo
 Then run `/ops/rotate-audit.sh` in the ops container and verify that metrics resume.
 A host crash can lose unread RAM events; export signed checkpoints and audit logs
 to a separate protected system in a real deployment.
+
+
+## Migration cutover and rollback
+
+The [Phase 7 report](07-migration.md) is the current isolated PostgreSQL-to-MySQL
+rehearsal. `make migration-drill` resets only its synthetic source/target and runs
+the full validation, failed-cutover gate, controlled rollback and final cutover.
+It stops both lab databases afterwards; `make migration-up migration-verify`
+reopens the retained state without resetting it.
+
+On validation failure, keep routing on PostgreSQL, inspect the failed table's
+row count/hash, and rebuild the isolated target before retrying. Never switch a
+partial target into service. A successful cutover leaves the source application's
+DML revoked. Do not manually enable both source and target writers.
+
+The tested post-write rollback captures exactly one controlled deposit. For real
+traffic, first drain/fence every client and ensure every possible target change
+can be reverse-replayed transactionally; a stale source alone is not a safe
+rollback. Preserve the source and migration evidence until the owner signs off.

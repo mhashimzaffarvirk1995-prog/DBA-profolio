@@ -1,0 +1,5 @@
+ROUTE: postgres (legacy-ready)
+Seeded 20,000 synthetic customers, 220,000 payments and 440,000 ledger entries
+ROUTE: postgres (preparing-injected-mismatch)
+PASS: source write rejected by freeze lock
+ROUTE: postgres (validation-rejected-injected-mismatch)

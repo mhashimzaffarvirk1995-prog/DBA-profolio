@@ -1,0 +1,10 @@
+ Container payflow-migration-runner-run-a4c5191647d0 Creating 
+ Container payflow-migration-runner-run-a4c5191647d0 Created 
+ROUTE: postgres (legacy-ready)
+Seeded 20,000 synthetic customers, 220,000 payments and 440,000 ledger entries
+ROUTE: postgres (preparing-injected-mismatch)
+PASS: source write rejected by freeze lock
+PASS: source snapshot is repeatable-read and read-only
+PASS: source uses verified TLS
+PASS: target uses verified TLS
+

@@ -1,0 +1,52 @@
+{
+  "payflow-mysql": {
+    "running": true,
+    "oom_killed": false,
+    "restarts": 0,
+    "networks": [
+      "payflow-shared",
+      "payflow_default"
+    ],
+    "volumes": {
+      "/var/lib/mysql": "payflow_mysql-data",
+      "/keyring": "payflow_mysql-keyring",
+      "/tls": "payflow_mysql-tls",
+      "/run/audit": "payflow_audit-buffer"
+    },
+    "published_ports": {
+      "3306/tcp": [
+        {
+          "HostIp": "127.0.0.1",
+          "HostPort": "3306"
+        }
+      ]
+    }
+  },
+  "payflow-migration-mysql-1": {
+    "running": false,
+    "oom_killed": false,
+    "restarts": 0,
+    "networks": [
+      "payflow-migration_default"
+    ],
+    "volumes": {
+      "/var/lib/mysql": "payflow-migration_target-data",
+      "/keyring": "payflow-migration_target-keyring",
+      "/tls": "payflow-migration_target-tls"
+    },
+    "published_ports": {}
+  },
+  "payflow-migration-postgres-1": {
+    "running": false,
+    "oom_killed": false,
+    "restarts": 0,
+    "networks": [
+      "payflow-migration_default"
+    ],
+    "volumes": {
+      "/var/lib/postgresql/data": "payflow-migration_source-data",
+      "/tls": "payflow-migration_source-tls"
+    },
+    "published_ports": {}
+  }
+}

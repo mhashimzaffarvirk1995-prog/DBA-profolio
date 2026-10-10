@@ -1,0 +1,89 @@
+ Container payflow-migration-runner-run-0c73a47e547d Creating 
+ Container payflow-migration-runner-run-0c73a47e547d Created 
+ROUTE: postgres (legacy-ready)
+Seeded 20,000 synthetic customers, 220,000 payments and 440,000 ledger entries
+PASS: source reader cannot write
+ROUTE: postgres (preparing-injected-mismatch)
+PASS: source write rejected by freeze lock
+PASS: source snapshot is repeatable-read and read-only
+PASS: source uses verified TLS
+PASS: target uses verified TLS
+PASS: case-folding uniqueness conflict detected
+PASS: invalid money rejected: NaN
+PASS: invalid money rejected: 0.00001
+PASS: negative signed ID rejected
+LOADED: currencies: 1
+LOADED: countries: 1
+LOADED: customers: 20,001
+LOADED: wallets: 20,001
+LOADED: transactions: 220,000
+LOADED: ledger_entries: 440,000
+LOADED: customer_preferences: 20,000
+VALIDATED: currencies: 1 rows, SHA256 485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2
+VALIDATED: countries: 1 rows, SHA256 8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67
+VALIDATED: customers: 20,001 rows, SHA256 7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121
+VALIDATED: wallets: 20,001 rows, SHA256 485c76c3a1336c25879f30a6b6a65a0ee6ac478cbef208c4beec8f4bd771d164
+VALIDATED: transactions: 220,000 rows, SHA256 e5a1bb57d1f400c788e5c4f23225cfe4073b8d220f5667052d8933172b3200be
+VALIDATED: ledger_entries: 440,000 rows, SHA256 87bffcd3a2ed1a6e7c712e4d565643eb8d84eff7cd51ba47526e176dc08928dc
+ROUTE: postgres (validation-rejected-injected-mismatch)
+PASS: checksum mismatch blocks cutover
+ROUTE: postgres (preparing-first-cutover)
+PASS: source write rejected by freeze lock
+PASS: source snapshot is repeatable-read and read-only
+PASS: source uses verified TLS
+PASS: target uses verified TLS
+PASS: case-folding uniqueness conflict detected
+PASS: invalid money rejected: NaN
+PASS: invalid money rejected: 0.00001
+PASS: negative signed ID rejected
+LOADED: currencies: 1
+LOADED: countries: 1
+LOADED: customers: 20,001
+LOADED: wallets: 20,001
+LOADED: transactions: 220,000
+LOADED: ledger_entries: 440,000
+LOADED: customer_preferences: 20,000
+VALIDATED: currencies: 1 rows, SHA256 485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2
+VALIDATED: countries: 1 rows, SHA256 8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67
+VALIDATED: customers: 20,001 rows, SHA256 7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121
+VALIDATED: wallets: 20,001 rows, SHA256 485c76c3a1336c25879f30a6b6a65a0ee6ac478cbef208c4beec8f4bd771d164
+VALIDATED: transactions: 220,000 rows, SHA256 e5a1bb57d1f400c788e5c4f23225cfe4073b8d220f5667052d8933172b3200be
+VALIDATED: ledger_entries: 440,000 rows, SHA256 87bffcd3a2ed1a6e7c712e4d565643eb8d84eff7cd51ba47526e176dc08928dc
+VALIDATED: customer_preferences: 20,000 rows, SHA256 cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806
+PASS: currency nets to zero
+PASS: no negative customer balance
+PASS: wallet equals ledger
+PASS: every transaction balanced
+PASS: completed payments have ledger
+PASS: no missing reversal
+ROUTE: postgres (validation-rejected-first-cutover)
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 511, in get_rows
+    row = fetch_row()
+          ^^^^^^^^^^^
+_mysql_connector.MySQLInterfaceError: Access denied; you need (at least one of) the PROCESS privilege(s) for this operation
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/repo/migration/manage.py", line 406, in <module>
+    if args.action=='all': all_steps()
+                           ^^^^^^^^^^^
+  File "/repo/migration/manage.py", line 389, in all_steps
+    migrate('first-cutover')
+  File "/repo/migration/manage.py", line 301, in migrate
+    check('all target tables encrypted', one(target,"SELECT COUNT(*) FROM information_schema.INNODB_TABLESPACES WHERE NAME LIKE 'payflow/%' AND ENCRYPTION<>'Y'")[0] == 0)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/repo/migration/manage.py", line 129, in one
+    row = cur.fetchone()
+          ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/mysql/connector/cursor_cext.py", line 731, in fetchone
+    row = self._connection.get_row()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 575, in get_row
+    rows, eof = self.get_rows(
+                ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/mysql/connector/connection_cext.py", line 558, in get_rows
+    raise get_mysql_exception(
+mysql.connector.errors.ProgrammingError: 1227 (42000): Access denied; you need (at least one of) the PROCESS privilege(s) for this operation
+

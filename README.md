@@ -4,9 +4,9 @@
 ![InnoDB Cluster](https://img.shields.io/badge/HA-InnoDB_Cluster-00758F)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
-![Phases](https://img.shields.io/badge/phases_done-6_of_8-brightgreen)
+![Phases](https://img.shields.io/badge/phases_done-7_of_8-brightgreen)
 
-PayFlow is a fictional money-transfer company that sends money from the UK, the Gulf, North America and Europe to Pakistan, India, Bangladesh and the Philippines. This repository is its **database layer, designed and operated the way a production DBA team would run it**: a schema that refuses bad money data, high availability with measured failover, backup and recovery, tuning, monitoring, and security evidence. Migration and cloud are the remaining phases.
+PayFlow is a fictional money-transfer company that sends money from the UK, the Gulf, North America and Europe to Pakistan, India, Bangladesh and the Philippines. This repository is its **database layer, designed and operated the way a production DBA team would run it**: a schema that refuses bad money data, high availability with measured failover, backup and recovery, tuning, monitoring, and security evidence. PostgreSQL migration is rehearsed on an isolated legacy dataset. Cloud deployment is the remaining phase.
 
 Everything is reproducible on a laptop with `make`, and every number below was measured, with raw logs in [docs/evidence/](docs/evidence/).
 
@@ -22,6 +22,7 @@ Everything is reproducible on a laptop with `make`, and every number below was m
 | **Performance** | Under a mixed load: "recent activity" screen **15.7 s → 6.7 ms**, fee report **>120 s → 5.6 s**, customer screens 0.5 → 449 per second, payments not slowed |
 | **Backup and recovery** | 9.1 GiB encrypted full backup in 345 s; independent restore in 137 s; encrypted PITR with escrowed keys: **124 s, RPO 0** |
 | **Security** | Production tablespaces, redo/undo and binlogs encrypted; identity-verified TLS; encrypted full restore and escrow-key PITR (RPO 0); independent metadata audit |
+| **Migration** | Isolated PostgreSQL → MySQL: 220,001 payments and 440,002 ledger rows; seven table hashes match; cutover 41.442 s, controlled post-write rollback 14.598 s with zero acknowledged payments lost |
 | **Tests** | 46 SQL assertions on procedures and triggers, passing natively and in Docker |
 | **Reproducibility** | From empty volumes: replication lab in 38 s, 3-node cluster in 48 s, 10M-row load in 6–8 min |
 
@@ -51,8 +52,8 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 | 4 | [Performance tuning](docs/04-performance-tuning.md) | Load test, slow log + pt-query-digest, EXPLAIN ANALYZE; query rewrite, online indexes, buffer pool sized from a capacity plan | ✅ Done |
 | 5 | [Monitoring](docs/05-monitoring.md) | Prometheus, mysqld_exporter, Grafana; replication, failed-backup and database-down alert drills | ✅ Done |
 | 6 | [Security and compliance](docs/06-security-compliance.md) | Scoped roles and locked definers, verified TLS, independent audit, encrypted data/backups and escrow-key PITR | ✅ Done |
-| 7 | Migration | Legacy PostgreSQL → MySQL, validated by row counts and checksums | Planned |
-| 8 | Cloud | Terraform: Amazon RDS for MySQL with read replica, backups, CloudWatch alarms | Planned |
+| 7 | [Migration](docs/07-migration.md) | PostgreSQL → MySQL; seven-table counts/checksums, write fencing, cutover and post-write rollback | ✅ Done |
+| 8 | Cloud | Terraform: Amazon RDS for MySQL with read replica, backups, CloudWatch alarms | Planned; AWS account needed for live deployment |
 
 ## What's inside
 
@@ -101,6 +102,13 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 - **Independent audit:** SQL operation metadata collected separately, HMAC verification, acknowledged RAM-log rotation and three collector alerts.
 - **Review evidence:** [monthly grants inventory](docs/evidence/phase6/access-review-2026-10.md), [technical review](docs/evidence/phase6/technical-review-2026-10.md) and [final validation](docs/evidence/phase6/final-validation.log). Human approval and external custody remain production responsibilities.
 
+### Phase 7: migrating between database engines
+
+- **Native PostgreSQL legacy data:** signed sequences, enums, NUMERIC, TIMESTAMPTZ, JSONB and booleans map into the existing MySQL payment schema.
+- **Validation before cutover:** source write locks and a read-only snapshot; parent-first batches; seven full-table SHA-256 digests; all six financial invariants. Deliberately corrupted JSON blocks cutover.
+- **Measured recovery:** a post-cutover 0.0001 GBP deposit survives a controlled rollback and final remigration, retaining its original ID and idempotency key. The final application reads it through the routing marker.
+- **Bounded scope:** synthetic offline lab, separate databases/volumes/network, verified TLS, encrypted MySQL tables, and no production data replacement. See the [migration report](docs/07-migration.md) for scope and evidence.
+
 ## Skills demonstrated
 
 | DBA skill | Where |
@@ -115,6 +123,7 @@ Each node holds the same schema: customers, KYC documents, wallets, beneficiarie
 | Query optimisation, indexing, EXPLAIN ANALYZE, slow log, pt-query-digest, capacity planning | [tuning/](tuning/), [docs/04-performance-tuning.md](docs/04-performance-tuning.md) |
 | Monitoring, dashboards, alert routing, incident response | [monitoring/](monitoring/), [docs/05-monitoring.md](docs/05-monitoring.md), [docs/runbooks.md](docs/runbooks.md) |
 | Least privilege, TLS, encrypted recovery, independent audit | [security/](security/), [Phase 6](docs/06-security-compliance.md) |
+| PostgreSQL → MySQL migration, compatibility, cutover/rollback | [migration/](migration/), [Phase 7](docs/07-migration.md) |
 | Testing, reconciliation, evidence-based reporting | [schema/tests/](schema/tests/), [schema/queries/](schema/queries/), [docs/](docs/) |
 | Linux, Bash, Docker, automation with `make` | [Makefile](Makefile), [scripts/lib/common.sh](scripts/lib/common.sh) |
 
@@ -171,6 +180,16 @@ make perf-run LABEL=after ARGS="--q2 rewrite"
 make capacity                       # growth and 12/24-month sizing
 ```
 
+**PostgreSQL migration rehearsal** (no AWS account needed):
+
+```bash
+make migration-drill               # resets isolated fixtures; tests migration and rollback
+make migration-up migration-verify # inspect/reverify the retained final state
+make migration-down                # stop lab databases; retain volumes and evidence
+```
+
+The drill automatically stops its databases on completion to free VM memory.
+
 `make help` lists every command.
 
 ## Repository layout
@@ -185,6 +204,7 @@ backup/                 Phase 3: backup jobs, binlog archiver, verification, PIT
 tuning/                 Phase 4: perf runs, EXPLAIN ANALYZE capture, indexes, capacity plan
 monitoring/             Phase 5: metrics, dashboards, alert rules and lab drills
 security/               Phase 6: scoped roles, verified TLS, independent audit and key recovery
+migration/              Phase 7: PostgreSQL fixtures, batch migration, cutover/rollback and validation
 scripts/                data generator, bulk loader, concurrency test, shared helpers
 docs/                   design notes and results per phase
 docs/evidence/          raw logs behind the numbers above

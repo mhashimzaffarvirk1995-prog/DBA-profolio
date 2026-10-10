@@ -1,0 +1,84 @@
+# Entirely isolated: no production volumes, shared network, or published ports.
+name: payflow-migration
+services:
+  security-init:
+    image: mysql:8.4
+    user: root
+    entrypoint: ["sh", "-c", "sh /setup-keyring.sh && cp /tls-source/* /tls/ && chown -R mysql:mysql /tls && chmod 700 /tls && chmod 600 /tls/server-key.pem"]
+    volumes:
+      - target-keyring:/keyring
+      - target-tls:/tls
+      - ../security/setup-keyring.sh:/setup-keyring.sh:ro
+      - ../.private/tls/server:/tls-source:ro
+  postgres-tls-init:
+    image: postgres:17
+    user: root
+    entrypoint: ["sh", "-c", "cp /tls-source/*pem /tls/ && chown -R postgres:postgres /tls && chmod 700 /tls && chmod 600 /tls/server-key.pem"]
+    volumes:
+      - source-tls:/tls
+      - ../.private/migration/postgres:/tls-source:ro
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: ${MIGRATION_PG_PASSWORD:?run make env}
+      POSTGRES_DB: legacy_payflow
+    depends_on:
+      postgres-tls-init:
+        condition: service_completed_successfully
+    command: ["postgres", "-c", "ssl=on", "-c", "ssl_cert_file=/tls/server-cert.pem", "-c", "ssl_key_file=/tls/server-key.pem", "-c", "hba_file=/etc/postgresql/migration_hba.conf", "-c", "shared_buffers=32MB", "-c", "work_mem=4MB", "-c", "max_connections=20"]
+    mem_limit: 256m
+    volumes:
+      - source-data:/var/lib/postgresql/data
+      - source-tls:/tls:ro
+      - ./pg_hba.conf:/etc/postgresql/migration_hba.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d legacy_payflow"]
+      interval: 3s
+      timeout: 3s
+      retries: 90
+  mysql:
+    image: mysql:8.4
+    hostname: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MIGRATION_MYSQL_PASSWORD:?run make env}
+      MYSQL_ROOT_HOST: "%"
+    depends_on:
+      security-init:
+        condition: service_completed_successfully
+    command: ["--innodb-buffer-pool-size=256M", "--innodb-redo-log-capacity=128M", "--max-connections=30", "--default-time-zone=+00:00", "--require-secure-transport=ON", "--ssl-ca=/tls/ca.pem", "--ssl-cert=/tls/server-cert.pem", "--ssl-key=/tls/server-key.pem", "--default-table-encryption=ON", "--innodb-redo-log-encrypt=ON", "--innodb-undo-log-encrypt=ON"]
+    mem_limit: 768m
+    volumes:
+      - target-data:/var/lib/mysql
+      - target-keyring:/keyring
+      - target-tls:/tls:ro
+      - ../security/mysqld.my:/usr/sbin/mysqld.my:ro
+      - ../security/component_keyring_file.cnf:/usr/lib64/mysql/plugin/component_keyring_file.cnf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql --protocol=SOCKET -uroot -N -e 'SELECT 1'"]
+      interval: 3s
+      timeout: 5s
+      retries: 120
+  runner:
+    build: .
+    profiles: [tools]
+    mem_limit: 512m
+    environment:
+      MIGRATION_PG_PASSWORD: ${MIGRATION_PG_PASSWORD}
+      MIGRATION_READER_PASSWORD: ${MIGRATION_READER_PASSWORD}
+      MIGRATION_WRITER_PASSWORD: ${MIGRATION_WRITER_PASSWORD}
+      MIGRATION_MYSQL_PASSWORD: ${MIGRATION_MYSQL_PASSWORD}
+      MIGRATION_LOADER_PASSWORD: ${MIGRATION_LOADER_PASSWORD}
+      MIGRATION_APP_PASSWORD: ${MIGRATION_APP_PASSWORD}
+    volumes:
+      - .:/repo/migration:ro
+      - ../schema:/repo/schema:ro
+      - ../security/owner.sql:/repo/security/owner.sql:ro
+      - ../docs/evidence/phase7:/evidence
+      - ../.private/migration/state:/state
+      - ../.private/tls/ca.pem:/tls/ca.pem:ro
+volumes:
+  source-data:
+  source-tls:
+  target-data:
+  target-keyring:
+  target-tls:

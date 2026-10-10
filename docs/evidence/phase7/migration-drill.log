@@ -1,0 +1,120 @@
+ Container payflow-migration-runner-run-a2610ae45c97 Creating 
+ Container payflow-migration-runner-run-a2610ae45c97 Created 
+ROUTE: postgres (legacy-ready)
+Seeded 20,000 synthetic customers, 220,000 payments and 440,000 ledger entries
+PASS: source reader cannot write
+ROUTE: postgres (preparing-injected-mismatch)
+PASS: source write rejected by freeze lock
+PASS: source snapshot is repeatable-read and read-only
+PASS: source uses verified TLS
+PASS: target uses verified TLS
+PASS: case-folding uniqueness conflict detected
+PASS: invalid money rejected: NaN
+PASS: invalid money rejected: 0.00001
+PASS: negative signed ID rejected
+LOADED: currencies: 1
+LOADED: countries: 1
+LOADED: customers: 20,001
+LOADED: wallets: 20,001
+LOADED: transactions: 220,000
+LOADED: ledger_entries: 440,000
+LOADED: customer_preferences: 20,000
+VALIDATED: currencies: 1 rows, SHA256 485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2
+VALIDATED: countries: 1 rows, SHA256 8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67
+VALIDATED: customers: 20,001 rows, SHA256 7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121
+VALIDATED: wallets: 20,001 rows, SHA256 485c76c3a1336c25879f30a6b6a65a0ee6ac478cbef208c4beec8f4bd771d164
+VALIDATED: transactions: 220,000 rows, SHA256 e5a1bb57d1f400c788e5c4f23225cfe4073b8d220f5667052d8933172b3200be
+VALIDATED: ledger_entries: 440,000 rows, SHA256 87bffcd3a2ed1a6e7c712e4d565643eb8d84eff7cd51ba47526e176dc08928dc
+ROUTE: postgres (validation-rejected-injected-mismatch)
+PASS: checksum mismatch blocks cutover
+ROUTE: postgres (preparing-first-cutover)
+PASS: source write rejected by freeze lock
+PASS: source snapshot is repeatable-read and read-only
+PASS: source uses verified TLS
+PASS: target uses verified TLS
+PASS: case-folding uniqueness conflict detected
+PASS: invalid money rejected: NaN
+PASS: invalid money rejected: 0.00001
+PASS: negative signed ID rejected
+LOADED: currencies: 1
+LOADED: countries: 1
+LOADED: customers: 20,001
+LOADED: wallets: 20,001
+LOADED: transactions: 220,000
+LOADED: ledger_entries: 440,000
+LOADED: customer_preferences: 20,000
+VALIDATED: currencies: 1 rows, SHA256 485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2
+VALIDATED: countries: 1 rows, SHA256 8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67
+VALIDATED: customers: 20,001 rows, SHA256 7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121
+VALIDATED: wallets: 20,001 rows, SHA256 485c76c3a1336c25879f30a6b6a65a0ee6ac478cbef208c4beec8f4bd771d164
+VALIDATED: transactions: 220,000 rows, SHA256 e5a1bb57d1f400c788e5c4f23225cfe4073b8d220f5667052d8933172b3200be
+VALIDATED: ledger_entries: 440,000 rows, SHA256 87bffcd3a2ed1a6e7c712e4d565643eb8d84eff7cd51ba47526e176dc08928dc
+VALIDATED: customer_preferences: 20,000 rows, SHA256 cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806
+PASS: currency nets to zero
+PASS: no negative customer balance
+PASS: wallet equals ledger
+PASS: every transaction balanced
+PASS: completed payments have ledger
+PASS: no missing reversal
+PASS: all target tables encrypted
+ROUTE: mysql (validated-first-cutover)
+CUTOVER: first-cutover in 41.105s; all seven tables identical
+PASS: source write rejected by revoked write permissions
+PASS: new target ID follows migrated sequence
+PASS: post-cutover retry is idempotent
+PASS: post-cutover exact four-place amount
+PASS: payment has exactly two immutable ledger records
+PASS: locked definer lifecycle audit trigger retained
+PASS: application cannot bypass payment procedures
+PASS: currency nets to zero
+PASS: no negative customer balance
+PASS: wallet equals ledger
+PASS: every transaction balanced
+PASS: completed payments have ledger
+PASS: no missing reversal
+ROUTE: mysql (rollback-write-fence)
+VALIDATED: currencies: 1 rows, SHA256 485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2
+VALIDATED: countries: 1 rows, SHA256 8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67
+VALIDATED: customers: 20,001 rows, SHA256 7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121
+VALIDATED: wallets: 20,001 rows, SHA256 a70b8d1e0d3f535ac95781f176be5c4ee2063a34505c5a776f2dcee99c3e4172
+VALIDATED: transactions: 220,001 rows, SHA256 7115482c99aa08c1e9299537687a755cc0bad5cc363a255fd0575d7d1e54fe00
+VALIDATED: ledger_entries: 440,002 rows, SHA256 1a6f3442a878ff7e30a26117da831d47fdb788defe2af81293b59777c90a2c48
+VALIDATED: customer_preferences: 20,000 rows, SHA256 cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806
+PASS: rollback preserves acknowledged target payment
+ROUTE: postgres (rollback-validated)
+ROLLBACK: 14.598s; acknowledged payments lost=0
+ROUTE: postgres (preparing-final-cutover)
+PASS: source write rejected by freeze lock
+PASS: source snapshot is repeatable-read and read-only
+PASS: source uses verified TLS
+PASS: target uses verified TLS
+PASS: case-folding uniqueness conflict detected
+PASS: invalid money rejected: NaN
+PASS: invalid money rejected: 0.00001
+PASS: negative signed ID rejected
+LOADED: currencies: 1
+LOADED: countries: 1
+LOADED: customers: 20,001
+LOADED: wallets: 20,001
+LOADED: transactions: 220,001
+LOADED: ledger_entries: 440,002
+LOADED: customer_preferences: 20,000
+VALIDATED: currencies: 1 rows, SHA256 485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2
+VALIDATED: countries: 1 rows, SHA256 8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67
+VALIDATED: customers: 20,001 rows, SHA256 7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121
+VALIDATED: wallets: 20,001 rows, SHA256 a70b8d1e0d3f535ac95781f176be5c4ee2063a34505c5a776f2dcee99c3e4172
+VALIDATED: transactions: 220,001 rows, SHA256 7115482c99aa08c1e9299537687a755cc0bad5cc363a255fd0575d7d1e54fe00
+VALIDATED: ledger_entries: 440,002 rows, SHA256 1a6f3442a878ff7e30a26117da831d47fdb788defe2af81293b59777c90a2c48
+VALIDATED: customer_preferences: 20,000 rows, SHA256 cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806
+PASS: currency nets to zero
+PASS: no negative customer balance
+PASS: wallet equals ledger
+PASS: every transaction balanced
+PASS: completed payments have ledger
+PASS: no missing reversal
+PASS: all target tables encrypted
+ROUTE: mysql (validated-final-cutover)
+CUTOVER: final-cutover in 41.442s; all seven tables identical
+PASS: source write rejected by revoked write permissions
+PASS: final route points to MySQL
+PASS: Phase 7 end-to-end migration, rejection gate, cutover and post-write rollback

@@ -1,0 +1,304 @@
+{
+  "started_at": "2026-10-10T11:03:03.827644+00:00",
+  "dataset": {
+    "customers": 20000,
+    "transfers": 200000
+  },
+  "runs": [
+    {
+      "label": "first-cutover",
+      "duration_s": 41.105,
+      "tables": {
+        "currencies": {
+          "source": {
+            "rows": 1,
+            "sha256": "485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2"
+          },
+          "target": {
+            "rows": 1,
+            "sha256": "485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2"
+          }
+        },
+        "countries": {
+          "source": {
+            "rows": 1,
+            "sha256": "8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67"
+          },
+          "target": {
+            "rows": 1,
+            "sha256": "8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67"
+          }
+        },
+        "customers": {
+          "source": {
+            "rows": 20001,
+            "sha256": "7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121"
+          },
+          "target": {
+            "rows": 20001,
+            "sha256": "7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121"
+          }
+        },
+        "wallets": {
+          "source": {
+            "rows": 20001,
+            "sha256": "485c76c3a1336c25879f30a6b6a65a0ee6ac478cbef208c4beec8f4bd771d164"
+          },
+          "target": {
+            "rows": 20001,
+            "sha256": "485c76c3a1336c25879f30a6b6a65a0ee6ac478cbef208c4beec8f4bd771d164"
+          }
+        },
+        "transactions": {
+          "source": {
+            "rows": 220000,
+            "sha256": "e5a1bb57d1f400c788e5c4f23225cfe4073b8d220f5667052d8933172b3200be"
+          },
+          "target": {
+            "rows": 220000,
+            "sha256": "e5a1bb57d1f400c788e5c4f23225cfe4073b8d220f5667052d8933172b3200be"
+          }
+        },
+        "ledger_entries": {
+          "source": {
+            "rows": 440000,
+            "sha256": "87bffcd3a2ed1a6e7c712e4d565643eb8d84eff7cd51ba47526e176dc08928dc"
+          },
+          "target": {
+            "rows": 440000,
+            "sha256": "87bffcd3a2ed1a6e7c712e4d565643eb8d84eff7cd51ba47526e176dc08928dc"
+          }
+        },
+        "customer_preferences": {
+          "source": {
+            "rows": 20000,
+            "sha256": "cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806"
+          },
+          "target": {
+            "rows": 20000,
+            "sha256": "cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806"
+          }
+        }
+      }
+    },
+    {
+      "label": "final-cutover",
+      "duration_s": 41.442,
+      "tables": {
+        "currencies": {
+          "source": {
+            "rows": 1,
+            "sha256": "485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2"
+          },
+          "target": {
+            "rows": 1,
+            "sha256": "485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2"
+          }
+        },
+        "countries": {
+          "source": {
+            "rows": 1,
+            "sha256": "8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67"
+          },
+          "target": {
+            "rows": 1,
+            "sha256": "8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67"
+          }
+        },
+        "customers": {
+          "source": {
+            "rows": 20001,
+            "sha256": "7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121"
+          },
+          "target": {
+            "rows": 20001,
+            "sha256": "7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121"
+          }
+        },
+        "wallets": {
+          "source": {
+            "rows": 20001,
+            "sha256": "a70b8d1e0d3f535ac95781f176be5c4ee2063a34505c5a776f2dcee99c3e4172"
+          },
+          "target": {
+            "rows": 20001,
+            "sha256": "a70b8d1e0d3f535ac95781f176be5c4ee2063a34505c5a776f2dcee99c3e4172"
+          }
+        },
+        "transactions": {
+          "source": {
+            "rows": 220001,
+            "sha256": "7115482c99aa08c1e9299537687a755cc0bad5cc363a255fd0575d7d1e54fe00"
+          },
+          "target": {
+            "rows": 220001,
+            "sha256": "7115482c99aa08c1e9299537687a755cc0bad5cc363a255fd0575d7d1e54fe00"
+          }
+        },
+        "ledger_entries": {
+          "source": {
+            "rows": 440002,
+            "sha256": "1a6f3442a878ff7e30a26117da831d47fdb788defe2af81293b59777c90a2c48"
+          },
+          "target": {
+            "rows": 440002,
+            "sha256": "1a6f3442a878ff7e30a26117da831d47fdb788defe2af81293b59777c90a2c48"
+          }
+        },
+        "customer_preferences": {
+          "source": {
+            "rows": 20000,
+            "sha256": "cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806"
+          },
+          "target": {
+            "rows": 20000,
+            "sha256": "cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806"
+          }
+        }
+      }
+    }
+  ],
+  "checks": [
+    "source reader cannot write",
+    "source write rejected by freeze lock",
+    "source snapshot is repeatable-read and read-only",
+    "source uses verified TLS",
+    "target uses verified TLS",
+    "case-folding uniqueness conflict detected",
+    "invalid money rejected: NaN",
+    "invalid money rejected: 0.00001",
+    "negative signed ID rejected",
+    "checksum mismatch blocks cutover",
+    "source write rejected by freeze lock",
+    "source snapshot is repeatable-read and read-only",
+    "source uses verified TLS",
+    "target uses verified TLS",
+    "case-folding uniqueness conflict detected",
+    "invalid money rejected: NaN",
+    "invalid money rejected: 0.00001",
+    "negative signed ID rejected",
+    "currency nets to zero",
+    "no negative customer balance",
+    "wallet equals ledger",
+    "every transaction balanced",
+    "completed payments have ledger",
+    "no missing reversal",
+    "all target tables encrypted",
+    "source write rejected by revoked write permissions",
+    "new target ID follows migrated sequence",
+    "post-cutover retry is idempotent",
+    "post-cutover exact four-place amount",
+    "payment has exactly two immutable ledger records",
+    "locked definer lifecycle audit trigger retained",
+    "application cannot bypass payment procedures",
+    "currency nets to zero",
+    "no negative customer balance",
+    "wallet equals ledger",
+    "every transaction balanced",
+    "completed payments have ledger",
+    "no missing reversal",
+    "rollback preserves acknowledged target payment",
+    "source write rejected by freeze lock",
+    "source snapshot is repeatable-read and read-only",
+    "source uses verified TLS",
+    "target uses verified TLS",
+    "case-folding uniqueness conflict detected",
+    "invalid money rejected: NaN",
+    "invalid money rejected: 0.00001",
+    "negative signed ID rejected",
+    "currency nets to zero",
+    "no negative customer balance",
+    "wallet equals ledger",
+    "every transaction balanced",
+    "completed payments have ledger",
+    "no missing reversal",
+    "all target tables encrypted",
+    "source write rejected by revoked write permissions",
+    "final route points to MySQL"
+  ],
+  "source_version": "PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+  "target_version": "8.4.11",
+  "target_uuid": "d96e77c5-c490-11f1-92c8-2e40bc9cd7bb",
+  "rollback": {
+    "duration_s": 14.598,
+    "acknowledged_payments_lost": 0,
+    "tables": {
+      "currencies": {
+        "source": {
+          "rows": 1,
+          "sha256": "485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2"
+        },
+        "target": {
+          "rows": 1,
+          "sha256": "485cf88d08a288bfb6472c19ad81de933ccad754c493dc21c858dc7ba5f842d2"
+        }
+      },
+      "countries": {
+        "source": {
+          "rows": 1,
+          "sha256": "8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67"
+        },
+        "target": {
+          "rows": 1,
+          "sha256": "8caf07bf26461f52d88d3ae95d0baafef158c7364c290b15c914ee15fa428d67"
+        }
+      },
+      "customers": {
+        "source": {
+          "rows": 20001,
+          "sha256": "7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121"
+        },
+        "target": {
+          "rows": 20001,
+          "sha256": "7c228bc6cbfefaeaea88ea4689899edafbd384f585cfa374cefe5ba6a33a7121"
+        }
+      },
+      "wallets": {
+        "source": {
+          "rows": 20001,
+          "sha256": "a70b8d1e0d3f535ac95781f176be5c4ee2063a34505c5a776f2dcee99c3e4172"
+        },
+        "target": {
+          "rows": 20001,
+          "sha256": "a70b8d1e0d3f535ac95781f176be5c4ee2063a34505c5a776f2dcee99c3e4172"
+        }
+      },
+      "transactions": {
+        "source": {
+          "rows": 220001,
+          "sha256": "7115482c99aa08c1e9299537687a755cc0bad5cc363a255fd0575d7d1e54fe00"
+        },
+        "target": {
+          "rows": 220001,
+          "sha256": "7115482c99aa08c1e9299537687a755cc0bad5cc363a255fd0575d7d1e54fe00"
+        }
+      },
+      "ledger_entries": {
+        "source": {
+          "rows": 440002,
+          "sha256": "1a6f3442a878ff7e30a26117da831d47fdb788defe2af81293b59777c90a2c48"
+        },
+        "target": {
+          "rows": 440002,
+          "sha256": "1a6f3442a878ff7e30a26117da831d47fdb788defe2af81293b59777c90a2c48"
+        }
+      },
+      "customer_preferences": {
+        "source": {
+          "rows": 20000,
+          "sha256": "cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806"
+        },
+        "target": {
+          "rows": 20000,
+          "sha256": "cfde5c5af5fd6d6c42a70ffa892699251ea06544d4931ea1e3e5eec83fb73806"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "psycopg": "3.3.6",
+    "mysql-connector-python": "9.7.0"
+  },
+  "finished_at": "2026-10-10T11:05:37.061660+00:00",
+  "status": "passed"
+}
